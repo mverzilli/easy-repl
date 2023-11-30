@@ -48,7 +48,7 @@ pub enum LoopStatus {
 ///
 /// All setter methods take owned `self` so the calls can be chained, for example:
 /// ```rust
-/// # use easy_repl::Repl;
+/// # use mini_async_repl::Repl;
 /// let repl = Repl::builder()
 ///     .description("My REPL")
 ///     .prompt("repl> ")

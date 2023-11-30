@@ -1,5 +1,5 @@
 use anyhow::{self, Context};
-use easy_repl::{
+use mini_async_repl::{
     command::{ArgsError, CommandArgInfo, CommandArgType, ExecuteCommand, NewCommand, Validator},
     CommandStatus, Repl,
 };
@@ -126,8 +126,7 @@ impl ExecuteCommand for OutXCommandHandler {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let mut outside_x = Rc::new(RefCell::new(String::from("Out x")));
-    let mut outside_y = String::from("Out y");
+    let outside_x = Rc::new(RefCell::new(String::from("Out x")));
 
     #[rustfmt::skip]
     let mut repl = Repl::builder()
@@ -152,20 +151,6 @@ async fn main() -> anyhow::Result<()> {
         	args_info: vec![],
         	handler: Box::new(OutXCommandHandler::new(outside_x.clone())),
         })
-        // TODO: not a very relevant example now that we're not using macros
-        // // this shows how to create Command manually with the help of the validator! macro
-        // // one could also implement arguments validation manually
-        // .add("outy", easy_repl::Command {
-        //     description: "Use mutably outside var y".into(),
-        //     args_info: vec!["appended".into()],
-        //     handler: Box::new(|args| {
-        //         let validator = validator!(i32);
-        //         validator(args)?;
-        //         outside_y += args[0];
-        //         println!("{}", outside_y);
-        //         Ok(CommandStatus::Done)
-        //     }),
-        // })
         .build().context("Failed to create repl")?;
 
     repl.run().await.context("Critical REPL error")?;

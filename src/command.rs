@@ -89,6 +89,18 @@ pub struct NewCommand {
 }
 
 impl NewCommand {
+    pub fn new(
+        desc: &str,
+        args_info: Vec<CommandArgInfo>,
+        handler: Box<dyn ExecuteCommand>,
+    ) -> Self {
+        Self {
+            description: desc.into(),
+            args_info,
+            handler,
+        }
+    }
+
     pub fn execute(
         &mut self,
         args: &[&str],
@@ -240,7 +252,7 @@ pub enum CriticalError {
 /// wrap errors that implement [`std::error::Error`] to indicate that they are
 /// critical and should be returned by the REPL, for example:
 /// ```rust
-/// # use easy_repl::{CriticalError, Critical};
+/// # use mini_async_repl::{CriticalError, Critical};
 /// let result: Result<(), std::fmt::Error> = Err(std::fmt::Error);
 /// let critical = result.into_critical();
 /// assert!(matches!(critical, Err(CriticalError::Critical(_))));
@@ -482,14 +494,14 @@ mod tests {
             }
         }
 
-        let mut cmd = NewCommand {
-            description: "Example cmd".into(),
-            args_info: vec![
+        let mut cmd = NewCommand::new(
+            "Example cmd",
+            vec![
                 CommandArgInfo::new(CommandArgType::I32),
                 CommandArgInfo::new(CommandArgType::F32),
             ],
-            handler: Box::new(WithCriticalCommandHandler::new()),
-        };
+            Box::new(WithCriticalCommandHandler::new()),
+        );
         let result = cmd.execute(&["13", "1.1"]).await;
 
         match result {

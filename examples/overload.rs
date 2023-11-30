@@ -1,5 +1,5 @@
 use anyhow::{self, Context};
-use easy_repl::{
+use mini_async_repl::{
     command::{ArgsError, CommandArgInfo, CommandArgType, ExecuteCommand, NewCommand, Validator},
     CommandStatus, Repl,
 };

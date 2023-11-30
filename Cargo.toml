@@ -1,5 +1,5 @@
 [package]
-name = "mini-async-repl"
+name = "mini_async_repl"
 version = "0.2.1"
 authors = ["Martin Verzilli <martin.verzilli@gmail.com", "Jędrzej Boczar <jedrzej.boczar@gmail.com>"]
 edition = "2021"

@@ -1,5 +1,5 @@
 use anyhow::{self, Context};
-use easy_repl::{
+use mini_async_repl::{
     command::{ArgsError, CommandArgInfo, CommandArgType, ExecuteCommand, NewCommand, Validator},
     CommandStatus, Repl,
 };
@@ -35,7 +35,7 @@ impl ExecuteCommand for SayHelloCommandHandler {
             )],
         );
         if let Err(e) = valid {
-            return Box::pin(AddCommandHandler::resolved(Err(e)));
+            return Box::pin(SayHelloCommandHandler::resolved(Err(e)));
         }
         Box::pin(self.handle_command(args[0].clone()))
     }

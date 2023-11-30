@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use anyhow::{self, Context};
-use easy_repl::{
+use mini_async_repl::{
     command::{
         ArgsError, CommandArgInfo, CommandArgType, Critical, ExecuteCommand, NewCommand, Validator,
     },
@@ -177,8 +177,6 @@ impl ExecuteCommand for RouletteErrorHandler {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let start = Instant::now();
-
     #[rustfmt::skip]
     let mut repl = Repl::builder()
         .add("ok", NewCommand {
@@ -207,7 +205,7 @@ async fn main() -> anyhow::Result<()> {
     let repl_res = repl.run().await;
     match repl_res {
         Ok(_) => Ok(()),
-        Err(e) => {
+        Err(_) => {
             println!("Repl halted. Quitting.");
             Ok(())
         }
