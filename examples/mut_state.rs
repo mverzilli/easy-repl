@@ -127,24 +127,24 @@ async fn main() -> anyhow::Result<()> {
         .description("Example REPL")
         .prompt("=> ")
         .text_width(60 as usize)
-        .add("count", Command {
-        	description: "Count from X to Y".into(),
-        	args_info: vec![
+        .add("count", Command::new(
+        	"Count from X to Y",
+        	vec![
         		CommandArgInfo::new_with_name(CommandArgType::I32, "X"),
         		CommandArgInfo::new_with_name(CommandArgType::I32, "Y"),
         	],
-        	handler: Box::new(CountCommandHandler::new()),
-        })
-        .add("say", Command {
-        	description: "Say X".into(),
-        	args_info: vec![CommandArgInfo::new_with_name(CommandArgType::F32, "X")],
-        	handler: Box::new(SayCommandHandler::new()),
-        })
-        .add("outx", Command {
-        	description: "Use mutably outside var x. This command has a really long description so we need to wrap it somehow, it is interesting how actually the wrapping will be performed.".into(),
-        	args_info: vec![],
-        	handler: Box::new(OutXCommandHandler::new(outside_x.clone())),
-        })
+        	Box::new(CountCommandHandler::new()),
+        ))
+        .add("say", Command::new(
+        	"Say X",
+        	vec![CommandArgInfo::new_with_name(CommandArgType::F32, "X")],
+        	Box::new(SayCommandHandler::new()),
+        ))
+        .add("outx", Command::new(
+        	"Use mutably outside var x. This command has a really long description so we need to wrap it somehow, it is interesting how actually the wrapping will be performed.",
+        	vec![],
+        	Box::new(OutXCommandHandler::new(outside_x.clone())),
+        ))
         .build().context("Failed to create repl")?;
 
     repl.run().await.context("Critical REPL error")?;

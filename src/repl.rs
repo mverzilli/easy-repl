@@ -418,17 +418,13 @@ mod tests {
 
     #[test]
     fn builder_duplicate() {
-        let command_x_1 = Command {
-            description: "Command X".into(),
-            args_info: vec![],
-            handler: Box::new(TrivialCommandHandler::new()),
-        };
+        let command_x_1 = Command::new("Command X", vec![], Box::new(TrivialCommandHandler::new()));
 
-        let command_x_2 = Command {
-            description: "Command X 2".into(),
-            args_info: vec![],
-            handler: Box::new(TrivialCommandHandler::new()),
-        };
+        let command_x_2 = Command::new(
+            "Command X 2",
+            vec![],
+            Box::new(TrivialCommandHandler::new()),
+        );
 
         let result = Repl::builder()
             .add("name_x", command_x_1)
@@ -440,17 +436,17 @@ mod tests {
 
     #[test]
     fn builder_overload() {
-        let command_x_1 = Command {
-            description: "Command X".into(),
-            args_info: vec![],
-            handler: Box::new(TrivialCommandHandler::new()),
-        };
+        let command_x_1 = Command::new(
+            "Command X".into(),
+            vec![],
+            Box::new(TrivialCommandHandler::new()),
+        );
 
-        let command_x_2 = Command {
-            description: "Command X 2".into(),
-            args_info: vec![CommandArgInfo::new(CommandArgType::I32)],
-            handler: Box::new(TrivialCommandHandler::new()),
-        };
+        let command_x_2 = Command::new(
+            "Command X 2",
+            vec![CommandArgInfo::new(CommandArgType::I32)],
+            Box::new(TrivialCommandHandler::new()),
+        );
 
         #[rustfmt::skip]
         let result = Repl::builder()
@@ -462,11 +458,7 @@ mod tests {
 
     #[test]
     fn builder_empty() {
-        let command_empty = Command {
-            description: "".into(),
-            args_info: vec![],
-            handler: Box::new(TrivialCommandHandler::new()),
-        };
+        let command_empty = Command::new("", vec![], Box::new(TrivialCommandHandler::new()));
 
         let result = Repl::builder().add("", command_empty).build();
         assert!(matches!(result, Err(BuilderError::InvalidName(_))));
@@ -474,11 +466,7 @@ mod tests {
 
     #[test]
     fn builder_spaces() {
-        let command_empty = Command {
-            description: "".into(),
-            args_info: vec![],
-            handler: Box::new(TrivialCommandHandler::new()),
-        };
+        let command_empty = Command::new("", vec![], Box::new(TrivialCommandHandler::new()));
 
         let result = Repl::builder()
             .add("name-with spaces", command_empty)
@@ -488,20 +476,12 @@ mod tests {
 
     #[test]
     fn builder_reserved() {
-        let command_help = Command {
-            description: "".into(),
-            args_info: vec![],
-            handler: Box::new(TrivialCommandHandler::new()),
-        };
+        let command_help = Command::new("", vec![], Box::new(TrivialCommandHandler::new()));
 
         let result = Repl::builder().add("help", command_help).build();
         assert!(matches!(result, Err(BuilderError::ReservedName(_))));
 
-        let command_quit = Command {
-            description: "".into(),
-            args_info: vec![],
-            handler: Box::new(TrivialCommandHandler::new()),
-        };
+        let command_quit = Command::new("", vec![], Box::new(TrivialCommandHandler::new()));
 
         let result = Repl::builder().add("quit", command_quit).build();
         assert!(matches!(result, Err(BuilderError::ReservedName(_))));
@@ -509,11 +489,11 @@ mod tests {
 
     #[tokio::test]
     async fn repl_quits() {
-        let command_foo = Command {
-            description: "description".into(),
-            args_info: vec![],
-            handler: Box::new(TrivialCommandHandler::new()),
-        };
+        let command_foo = Command::new(
+            "description",
+            vec![],
+            Box::new(TrivialCommandHandler::new()),
+        );
 
         let mut repl = Repl::builder().add("foo", command_foo).build().unwrap();
         assert_eq!(
@@ -542,11 +522,11 @@ mod tests {
                 Box::pin(self.handle_command(args))
             }
         }
-        let command_quit = Command {
-            description: "description".into(),
-            args_info: vec![],
-            handler: Box::new(QuittingCommandHandler::new()),
-        };
+        let command_quit = Command::new(
+            "description",
+            vec![],
+            Box::new(QuittingCommandHandler::new()),
+        );
 
         let mut repl = Repl::builder().add("foo", command_quit).build().unwrap();
         assert_eq!(

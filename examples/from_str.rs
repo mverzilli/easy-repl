@@ -88,16 +88,16 @@ impl ExecuteCommand for IpAddrCommandHandler {
 async fn main() -> anyhow::Result<()> {
     #[rustfmt::skip]
     let mut repl = Repl::builder()
-        .add("ls", Command {
-            description: "List files in a directory".into(),
-            args_info: vec![CommandArgInfo::new_with_name(CommandArgType::Custom, "dir")],
-            handler: Box::new(LsCommandHandler::new()),
-        })
-        .add("ipaddr", Command {
-            description: "Just parse and print the given IP address".into(),
-            args_info: vec![CommandArgInfo::new_with_name(CommandArgType::Custom, "ip")],
-            handler: Box::new(IpAddrCommandHandler::new()),
-        })
+        .add("ls", Command::new(
+            "List files in a directory",
+            vec![CommandArgInfo::new_with_name(CommandArgType::Custom, "dir")],
+            Box::new(LsCommandHandler::new()),
+        ))
+        .add("ipaddr", Command::new(
+            "Just parse and print the given IP address".into(),
+            vec![CommandArgInfo::new_with_name(CommandArgType::Custom, "ip")],
+            Box::new(IpAddrCommandHandler::new()),
+        ))
         .build()
         .context("Failed to create repl")?;
 

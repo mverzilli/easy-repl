@@ -98,27 +98,27 @@ impl ExecuteCommand for DescribeCommandHandler {
 async fn main() -> anyhow::Result<()> {
     #[rustfmt::skip]
     let mut repl = Repl::builder()
-        .add("describe", Command {
-            description: "Variant 1".into(),
-            args_info: vec![],
-            handler: Box::new(DescribeCommandHandler::new()),
-        })
-        .add("describe", Command {
-        	description: "Variant 2".into(),
-        	args_info: vec![
+        .add("describe", Command::new(
+            "Variant 1",
+            vec![],
+            Box::new(DescribeCommandHandler::new()),
+        ))
+        .add("describe", Command::new(
+        	"Variant 2",
+        	vec![
         		CommandArgInfo::new_with_name(CommandArgType::I32, "a"),
         		CommandArgInfo::new_with_name(CommandArgType::I32, "b"),
         	],
-        	handler: Box::new(DescribeCommandHandler::new()),
-        })           
-        .add("describe", Command {
-            description: "Variant 3".into(),
-            args_info: vec![
+        	Box::new(DescribeCommandHandler::new()),
+        ))           
+        .add("describe", Command::new(
+            "Variant 3",
+            vec![
         		CommandArgInfo::new_with_name(CommandArgType::I32, "a"),
         		CommandArgInfo::new_with_name(CommandArgType::String, "b"),
         	],
-        	handler: Box::new(DescribeCommandHandler::new()),
-        })
+        	Box::new(DescribeCommandHandler::new()),
+        ))
         .build()
         .context("Failed to create repl")?;
 

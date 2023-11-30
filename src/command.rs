@@ -83,11 +83,11 @@ impl Display for CommandArgType {
 
 pub struct Command {
     /// Command desctiption that will be displayed in the help message
-    pub description: String,
+    pub(crate) description: String,
     /// Names and types of arguments to the command
-    pub args_info: Vec<CommandArgInfo>,
+    pub(crate) args_info: Vec<CommandArgInfo>,
     /// Command handler which should validate arguments and perform command logic
-    pub handler: Box<dyn ExecuteCommand>,
+    pub(crate) handler: Box<dyn ExecuteCommand>,
 }
 
 impl Command {
@@ -293,11 +293,11 @@ mod tests {
 
     #[tokio::test]
     async fn manual_command() {
-        let mut cmd = Command {
-            description: "Test command".into(),
-            args_info: vec![CommandArgInfo::new(CommandArgType::String)],
-            handler: Box::new(TrivialCommandHandler::new()),
-        };
+        let mut cmd = Command::new(
+            "Test command",
+            vec![CommandArgInfo::new(CommandArgType::String)],
+            Box::new(TrivialCommandHandler::new()),
+        );
         let result = cmd.execute(&["hello"]).await;
 
         match result {
@@ -308,14 +308,14 @@ mod tests {
 
     #[tokio::test]
     async fn command_with_args() {
-        let mut cmd = Command {
-            description: "Example cmd".into(),
-            args_info: vec![
+        let mut cmd = Command::new(
+            "Example cmd",
+            vec![
                 CommandArgInfo::new(CommandArgType::I32),
                 CommandArgInfo::new(CommandArgType::F32),
             ],
-            handler: Box::new(TrivialCommandHandler::new()),
-        };
+            Box::new(TrivialCommandHandler::new()),
+        );
         let result = cmd.execute(&["13", "1.1"]).await;
 
         match result {

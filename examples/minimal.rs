@@ -76,23 +76,23 @@ impl ExecuteCommand for AddCommandHandler {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let hello_cmd = Command {
-        description: "Say hello".into(),
-        args_info: vec![CommandArgInfo::new_with_name(
+    let hello_cmd = Command::new(
+        "Say hello",
+        vec![CommandArgInfo::new_with_name(
             CommandArgType::String,
             "name",
         )],
-        handler: Box::new(SayHelloCommandHandler::new()),
-    };
+        Box::new(SayHelloCommandHandler::new()),
+    );
 
-    let add_cmd = Command {
-        description: "Add X to Y".into(),
-        args_info: vec![
+    let add_cmd = Command::new(
+        "Add X to Y",
+        vec![
             CommandArgInfo::new_with_name(CommandArgType::I32, "X"),
             CommandArgInfo::new_with_name(CommandArgType::I32, "Y"),
         ],
-        handler: Box::new(AddCommandHandler::new()),
-    };
+        Box::new(AddCommandHandler::new()),
+    );
 
     #[rustfmt::skip]
     let mut repl = Repl::builder()

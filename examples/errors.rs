@@ -165,26 +165,26 @@ impl ExecuteCommand for RouletteErrorHandler {
 async fn main() -> anyhow::Result<()> {
     #[rustfmt::skip]
     let mut repl = Repl::builder()
-        .add("ok", Command {
-            description: "Run a command that just succeeds".into(),
-            args_info: vec![],
-            handler: Box::new(OkCommandHandler::new()),
-        })
-        .add("error", Command {
-            description: "Command with recoverable error handled by the REPL".into(),
-            args_info: vec![CommandArgInfo::new_with_name(CommandArgType::String, "text")],
-            handler: Box::new(RecoverableErrorHandler::new()),
-        })
-        .add("critical", Command {
-            description: "Command returns a critical error that must be handled outside of REPL".into(),
-            args_info: vec![CommandArgInfo::new_with_name(CommandArgType::String, "text")],
-            handler: Box::new(CriticalErrorHandler::new()),
-        })
-        .add("roulette", Command {
-            description: "Feeling lucky?".into(),
-            args_info: vec![],
-            handler: Box::new(RouletteErrorHandler::new(Instant::now())),
-        })
+        .add("ok", Command::new(
+            "Run a command that just succeeds",
+            vec![],
+            Box::new(OkCommandHandler::new()),
+        ))
+        .add("error", Command::new(
+            "Command with recoverable error handled by the REPL",
+            vec![CommandArgInfo::new_with_name(CommandArgType::String, "text")],
+            Box::new(RecoverableErrorHandler::new()),
+        ))
+        .add("critical", Command::new(
+            "Command returns a critical error that must be handled outside of REPL",
+            vec![CommandArgInfo::new_with_name(CommandArgType::String, "text")],
+            Box::new(CriticalErrorHandler::new()),
+        ))
+        .add("roulette", Command::new(
+            "Feeling lucky?",
+            vec![],
+            Box::new(RouletteErrorHandler::new(Instant::now())),
+        ))
         .build()
         .context("Failed to create repl")?;
 
