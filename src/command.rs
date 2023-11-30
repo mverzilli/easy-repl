@@ -79,7 +79,7 @@ impl Display for CommandArgType {
     }
 }
 
-pub struct NewCommand {
+pub struct Command {
     /// Command desctiption that will be displayed in the help message
     pub description: String,
     /// Names and types of arguments to the command
@@ -88,7 +88,7 @@ pub struct NewCommand {
     pub handler: Box<dyn ExecuteCommand>,
 }
 
-impl NewCommand {
+impl Command {
     pub fn new(
         desc: &str,
         args_info: Vec<CommandArgInfo>,
@@ -289,7 +289,7 @@ mod tests {
 
     #[tokio::test]
     async fn manual_command() {
-        let mut cmd = NewCommand {
+        let mut cmd = Command {
             description: "Test command".into(),
             args_info: vec![CommandArgInfo::new(CommandArgType::String)],
             handler: Box::new(TrivialCommandHandler::new()),
@@ -304,7 +304,7 @@ mod tests {
 
     #[tokio::test]
     async fn command_with_args() {
-        let mut cmd = NewCommand {
+        let mut cmd = Command {
             description: "Example cmd".into(),
             args_info: vec![
                 CommandArgInfo::new(CommandArgType::I32),
@@ -347,7 +347,7 @@ mod tests {
             }
         }
 
-        let mut cmd = NewCommand::new(
+        let mut cmd = Command::new(
             "Example cmd",
             vec![
                 CommandArgInfo::new(CommandArgType::I32),

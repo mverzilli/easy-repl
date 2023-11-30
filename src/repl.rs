@@ -8,7 +8,7 @@ use textwrap;
 use thiserror;
 use trie_rs::{Trie, TrieBuilder};
 
-use crate::command::{ArgsError, CommandStatus, CriticalError, NewCommand};
+use crate::command::{ArgsError, Command, CommandStatus, CriticalError};
 use crate::completion::{completion_candidates, Completion};
 
 /// Reserved command names. These commands are always added to REPL.
@@ -28,7 +28,7 @@ pub struct Repl {
     description: String,
     prompt: String,
     text_width: usize,
-    commands: HashMap<String, Vec<NewCommand>>,
+    commands: HashMap<String, Vec<Command>>,
     trie: Rc<Trie<u8>>,
     editor: rustyline::Editor<Completion>,
     out: Box<dyn Write>,
@@ -56,7 +56,7 @@ pub enum LoopStatus {
 ///     .expect("Failed to build REPL");
 /// ```
 pub struct ReplBuilder {
-    commands: Vec<(String, NewCommand)>,
+    commands: Vec<(String, Command)>,
     description: String,
     prompt: String,
     text_width: usize,
@@ -166,14 +166,14 @@ impl ReplBuilder {
     }
 
     /// Add a command with given `name`. Use along with the [`command!`] macro.
-    pub fn add(mut self, name: &str, cmd: NewCommand) -> Self {
+    pub fn add(mut self, name: &str, cmd: Command) -> Self {
         self.commands.push((name.into(), cmd));
         self
     }
 
     /// Finalize the configuration and return the REPL or error.
     pub fn build(self) -> Result<Repl, BuilderError> {
-        let mut commands: HashMap<String, Vec<NewCommand>> = HashMap::new();
+        let mut commands: HashMap<String, Vec<Command>> = HashMap::new();
         let mut trie = TrieBuilder::new();
         for (name, cmd) in self.commands {
             let cmds = commands.entry(name.clone()).or_default();
@@ -418,13 +418,13 @@ mod tests {
 
     #[test]
     fn builder_duplicate() {
-        let command_x_1 = NewCommand {
+        let command_x_1 = Command {
             description: "Command X".into(),
             args_info: vec![],
             handler: Box::new(TrivialCommandHandler::new()),
         };
 
-        let command_x_2 = NewCommand {
+        let command_x_2 = Command {
             description: "Command X 2".into(),
             args_info: vec![],
             handler: Box::new(TrivialCommandHandler::new()),
@@ -440,13 +440,13 @@ mod tests {
 
     #[test]
     fn builder_overload() {
-        let command_x_1 = NewCommand {
+        let command_x_1 = Command {
             description: "Command X".into(),
             args_info: vec![],
             handler: Box::new(TrivialCommandHandler::new()),
         };
 
-        let command_x_2 = NewCommand {
+        let command_x_2 = Command {
             description: "Command X 2".into(),
             args_info: vec![CommandArgInfo::new(CommandArgType::I32)],
             handler: Box::new(TrivialCommandHandler::new()),
@@ -462,7 +462,7 @@ mod tests {
 
     #[test]
     fn builder_empty() {
-        let command_empty = NewCommand {
+        let command_empty = Command {
             description: "".into(),
             args_info: vec![],
             handler: Box::new(TrivialCommandHandler::new()),
@@ -474,7 +474,7 @@ mod tests {
 
     #[test]
     fn builder_spaces() {
-        let command_empty = NewCommand {
+        let command_empty = Command {
             description: "".into(),
             args_info: vec![],
             handler: Box::new(TrivialCommandHandler::new()),
@@ -488,7 +488,7 @@ mod tests {
 
     #[test]
     fn builder_reserved() {
-        let command_help = NewCommand {
+        let command_help = Command {
             description: "".into(),
             args_info: vec![],
             handler: Box::new(TrivialCommandHandler::new()),
@@ -497,7 +497,7 @@ mod tests {
         let result = Repl::builder().add("help", command_help).build();
         assert!(matches!(result, Err(BuilderError::ReservedName(_))));
 
-        let command_quit = NewCommand {
+        let command_quit = Command {
             description: "".into(),
             args_info: vec![],
             handler: Box::new(TrivialCommandHandler::new()),
@@ -509,7 +509,7 @@ mod tests {
 
     #[tokio::test]
     async fn repl_quits() {
-        let command_foo = NewCommand {
+        let command_foo = Command {
             description: "description".into(),
             args_info: vec![],
             handler: Box::new(TrivialCommandHandler::new()),
@@ -541,7 +541,7 @@ mod tests {
                 Box::pin(self.handle_command(args))
             }
         }
-        let command_quit = NewCommand {
+        let command_quit = Command {
             description: "description".into(),
             args_info: vec![],
             handler: Box::new(QuittingCommandHandler::new()),

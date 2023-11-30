@@ -1,6 +1,6 @@
 use anyhow::{self, Context};
 use mini_async_repl::{
-    command::{ArgsError, CommandArgInfo, CommandArgType, ExecuteCommand, NewCommand, Validator},
+    command::{ArgsError, Command, CommandArgInfo, CommandArgType, ExecuteCommand, Validator},
     CommandStatus, Repl,
 };
 use std::cell::RefCell;
@@ -133,7 +133,7 @@ async fn main() -> anyhow::Result<()> {
         .description("Example REPL")
         .prompt("=> ")
         .text_width(60 as usize)
-        .add("count", NewCommand {
+        .add("count", Command {
         	description: "Count from X to Y".into(),
         	args_info: vec![
         		CommandArgInfo::new_with_name(CommandArgType::I32, "X"),
@@ -141,12 +141,12 @@ async fn main() -> anyhow::Result<()> {
         	],
         	handler: Box::new(CountCommandHandler::new()),
         })
-        .add("say", NewCommand {
+        .add("say", Command {
         	description: "Say X".into(),
         	args_info: vec![CommandArgInfo::new_with_name(CommandArgType::F32, "X")],
         	handler: Box::new(SayCommandHandler::new()),
         })
-        .add("outx", NewCommand {
+        .add("outx", Command {
         	description: "Use mutably outside var x. This command has a really long description so we need to wrap it somehow, it is interesting how actually the wrapping will be performed.".into(),
         	args_info: vec![],
         	handler: Box::new(OutXCommandHandler::new(outside_x.clone())),

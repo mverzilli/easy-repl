@@ -1,6 +1,6 @@
 use anyhow::{self, Context};
 use mini_async_repl::{
-    command::{ArgsError, CommandArgInfo, CommandArgType, ExecuteCommand, NewCommand, Validator},
+    command::{ArgsError, Command, CommandArgInfo, CommandArgType, ExecuteCommand, Validator},
     CommandStatus, Repl,
 };
 use std::future::Future;
@@ -88,12 +88,12 @@ impl ExecuteCommand for DescribeCommandHandler {
 async fn main() -> anyhow::Result<()> {
     #[rustfmt::skip]
     let mut repl = Repl::builder()
-        .add("describe", NewCommand {
+        .add("describe", Command {
             description: "Variant 1".into(),
             args_info: vec![],
             handler: Box::new(DescribeCommandHandler::new()),
         })
-        .add("describe", NewCommand {
+        .add("describe", Command {
         	description: "Variant 2".into(),
         	args_info: vec![
         		CommandArgInfo::new_with_name(CommandArgType::I32, "a"),
@@ -101,7 +101,7 @@ async fn main() -> anyhow::Result<()> {
         	],
         	handler: Box::new(DescribeCommandHandler::new()),
         })           
-        .add("describe", NewCommand {
+        .add("describe", Command {
             description: "Variant 3".into(),
             args_info: vec![
         		CommandArgInfo::new_with_name(CommandArgType::I32, "a"),

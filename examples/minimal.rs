@@ -1,6 +1,6 @@
 use anyhow::{self, Context};
 use mini_async_repl::{
-    command::{ArgsError, CommandArgInfo, CommandArgType, ExecuteCommand, NewCommand, Validator},
+    command::{ArgsError, Command, CommandArgInfo, CommandArgType, ExecuteCommand, Validator},
     CommandStatus, Repl,
 };
 use std::future::Future;
@@ -86,7 +86,7 @@ impl ExecuteCommand for AddCommandHandler {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let hello_cmd = NewCommand {
+    let hello_cmd = Command {
         description: "Say hello".into(),
         args_info: vec![CommandArgInfo::new_with_name(
             CommandArgType::String,
@@ -95,7 +95,7 @@ async fn main() -> anyhow::Result<()> {
         handler: Box::new(SayHelloCommandHandler::new()),
     };
 
-    let add_cmd = NewCommand {
+    let add_cmd = Command {
         description: "Add X to Y".into(),
         args_info: vec![
             CommandArgInfo::new_with_name(CommandArgType::I32, "X"),

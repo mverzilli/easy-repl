@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use anyhow::{self, Context};
 use mini_async_repl::{
-    command::{ArgsError, CommandArgInfo, CommandArgType, ExecuteCommand, NewCommand, Validator},
+    command::{ArgsError, Command, CommandArgInfo, CommandArgType, ExecuteCommand, Validator},
     CommandStatus, Repl,
 };
 use std::future::Future;
@@ -92,12 +92,12 @@ impl ExecuteCommand for IpAddrCommandHandler {
 async fn main() -> anyhow::Result<()> {
     #[rustfmt::skip]
     let mut repl = Repl::builder()
-        .add("ls", NewCommand {
+        .add("ls", Command {
             description: "List files in a directory".into(),
             args_info: vec![CommandArgInfo::new_with_name(CommandArgType::Custom, "dir")],
             handler: Box::new(LsCommandHandler::new()),
         })
-        .add("ipaddr", NewCommand {
+        .add("ipaddr", Command {
             description: "Just parse and print the given IP address".into(),
             args_info: vec![CommandArgInfo::new_with_name(CommandArgType::Custom, "ip")],
             handler: Box::new(IpAddrCommandHandler::new()),

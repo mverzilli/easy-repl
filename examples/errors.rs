@@ -3,7 +3,7 @@ use std::time::Instant;
 use anyhow::{self, Context};
 use mini_async_repl::{
     command::{
-        ArgsError, CommandArgInfo, CommandArgType, Critical, ExecuteCommand, NewCommand, Validator,
+        ArgsError, Command, CommandArgInfo, CommandArgType, Critical, ExecuteCommand, Validator,
     },
     CommandStatus, Repl,
 };
@@ -179,22 +179,22 @@ impl ExecuteCommand for RouletteErrorHandler {
 async fn main() -> anyhow::Result<()> {
     #[rustfmt::skip]
     let mut repl = Repl::builder()
-        .add("ok", NewCommand {
+        .add("ok", Command {
             description: "Run a command that just succeeds".into(),
             args_info: vec![],
             handler: Box::new(OkCommandHandler::new()),
         })
-        .add("error", NewCommand {
+        .add("error", Command {
             description: "Command with recoverable error handled by the REPL".into(),
             args_info: vec![CommandArgInfo::new_with_name(CommandArgType::String, "text")],
             handler: Box::new(RecoverableErrorHandler::new()),
         })
-        .add("critical", NewCommand {
+        .add("critical", Command {
             description: "Command returns a critical error that must be handled outside of REPL".into(),
             args_info: vec![CommandArgInfo::new_with_name(CommandArgType::String, "text")],
             handler: Box::new(CriticalErrorHandler::new()),
         })
-        .add("roulette", NewCommand {
+        .add("roulette", Command {
             description: "Feeling lucky?".into(),
             args_info: vec![],
             handler: Box::new(RouletteErrorHandler::new(Instant::now())),
