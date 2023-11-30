@@ -1,8 +1,8 @@
 use anyhow::{self, Context};
 use mini_async_repl::{
     command::{
-        resolved_command, ArgsError, Command, CommandArgInfo, CommandArgType, ExecuteCommand,
-        Validator,
+        resolved_command, validate, ArgsError, Command, CommandArgInfo, CommandArgType,
+        ExecuteCommand,
     },
     CommandStatus, Repl,
 };
@@ -33,7 +33,7 @@ impl ExecuteCommand for DescribeCommandHandler {
         args: Vec<String>,
         args_info: Vec<CommandArgInfo>,
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
-        let valid = Validator::validate(args.clone(), args_info.clone());
+        let valid = validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
             return Box::pin(resolved_command(Err(e)));
         }
@@ -42,12 +42,12 @@ impl ExecuteCommand for DescribeCommandHandler {
         // providing one CommandHandler for each overload.
         // For now I think it's better not to constraint approaches
         // because it's not yet clear to me what the best design is.
-        let variant_1 = Validator::validate(args.clone(), args_info);
+        let variant_1 = validate(args.clone(), args_info);
         if let Ok(()) = variant_1 {
             return Box::pin(self.handle_variant_1());
         }
 
-        let variant_2 = Validator::validate(
+        let variant_2 = validate(
             args.clone(),
             vec![
                 CommandArgInfo::new_with_name(CommandArgType::I32, "a"),
@@ -66,7 +66,7 @@ impl ExecuteCommand for DescribeCommandHandler {
             }
         }
 
-        let variant_3 = Validator::validate(
+        let variant_3 = validate(
             args.clone(),
             vec![
                 CommandArgInfo::new_with_name(CommandArgType::I32, "a"),

@@ -135,46 +135,43 @@ impl Command {
     }
 }
 
-pub struct Validator {}
-impl Validator {
-    pub fn validate(
-        args: Vec<String>,
-        arg_infos: Vec<CommandArgInfo>,
-    ) -> std::result::Result<(), ArgsError> {
-        if args.len() != arg_infos.len() {
-            return Err(ArgsError::WrongNumberOfArguments {
-                got: args.len(),
-                expected: arg_infos.len(),
-            });
-        }
-
-        for (i, arg_value) in args.iter().enumerate() {
-            let arg_info = arg_infos[i].clone();
-            let arg_type: CommandArgType = arg_info.arg_type;
-            match arg_type {
-                CommandArgType::I32 => {
-                    if let Err(err) = &arg_value.parse::<i32>() {
-                        return Err(ArgsError::WrongArgumentValue {
-                            argument: arg_value.to_string(),
-                            error: err.to_string(),
-                        });
-                    }
-                }
-                CommandArgType::F32 => {
-                    if let Err(err) = &arg_value.parse::<f32>() {
-                        return Err(ArgsError::WrongArgumentValue {
-                            argument: arg_value.to_string(),
-                            error: err.to_string(),
-                        });
-                    }
-                }
-                CommandArgType::String => (),
-                CommandArgType::Custom => (),
-            }
-        }
-
-        Ok(())
+pub fn validate(
+    args: Vec<String>,
+    arg_infos: Vec<CommandArgInfo>,
+) -> std::result::Result<(), ArgsError> {
+    if args.len() != arg_infos.len() {
+        return Err(ArgsError::WrongNumberOfArguments {
+            got: args.len(),
+            expected: arg_infos.len(),
+        });
     }
+
+    for (i, arg_value) in args.iter().enumerate() {
+        let arg_info = arg_infos[i].clone();
+        let arg_type: CommandArgType = arg_info.arg_type;
+        match arg_type {
+            CommandArgType::I32 => {
+                if let Err(err) = &arg_value.parse::<i32>() {
+                    return Err(ArgsError::WrongArgumentValue {
+                        argument: arg_value.to_string(),
+                        error: err.to_string(),
+                    });
+                }
+            }
+            CommandArgType::F32 => {
+                if let Err(err) = &arg_value.parse::<f32>() {
+                    return Err(ArgsError::WrongArgumentValue {
+                        argument: arg_value.to_string(),
+                        error: err.to_string(),
+                    });
+                }
+            }
+            CommandArgType::String => (),
+            CommandArgType::Custom => (),
+        }
+    }
+
+    Ok(())
 }
 
 /// Command handler.
@@ -257,16 +254,16 @@ mod tests {
     #[test]
     fn validator_no_args() {
         let arg_types = vec![];
-        assert!(Validator::validate(vec![], arg_types.clone()).is_ok());
-        assert!(Validator::validate(vec!["hello".into()], arg_types.clone()).is_err())
+        assert!(validate(vec![], arg_types.clone()).is_ok());
+        assert!(validate(vec!["hello".into()], arg_types.clone()).is_err())
     }
 
     #[test]
     fn validator_one_arg() {
         let arg_types = vec![CommandArgInfo::new(CommandArgType::I32)];
-        assert!(Validator::validate(vec![], arg_types.clone()).is_err());
-        assert!(Validator::validate(vec!["hello".into()], arg_types.clone()).is_err());
-        assert!(Validator::validate(vec!["13".into()], arg_types.clone()).is_ok())
+        assert!(validate(vec![], arg_types.clone()).is_err());
+        assert!(validate(vec!["hello".into()], arg_types.clone()).is_err());
+        assert!(validate(vec!["13".into()], arg_types.clone()).is_ok())
     }
 
     #[test]
@@ -277,23 +274,23 @@ mod tests {
             CommandArgInfo::new(CommandArgType::String),
         ];
 
-        assert!(Validator::validate(vec![], arg_types.clone()).is_err());
-        assert!(Validator::validate(
+        assert!(validate(vec![], arg_types.clone()).is_err());
+        assert!(validate(
             vec!["1".into(), "2.1".into(), "hello".into()],
             arg_types.clone()
         )
         .is_ok());
-        assert!(Validator::validate(
+        assert!(validate(
             vec!["1.2".into(), "2.1".into(), "hello".into()],
             arg_types.clone()
         )
         .is_err());
-        assert!(Validator::validate(
+        assert!(validate(
             vec!["1".into(), "a".into(), "hello".into()],
             arg_types.clone()
         )
         .is_err());
-        assert!(Validator::validate(
+        assert!(validate(
             vec!["1".into(), "2.1".into(), "hello".into(), "world".into()],
             arg_types.clone()
         )
