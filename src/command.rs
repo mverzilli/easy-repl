@@ -3,6 +3,179 @@
 use anyhow;
 use thiserror;
 
+use std::pin::Pin;
+use std::future::Future;
+use std::fmt::Display;
+use std::fmt::Formatter;
+
+pub trait ExecuteCommand {
+    fn execute(&mut self, args: Vec<String>) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>>;
+}
+
+pub struct TrivialCommandHandler {}
+impl TrivialCommandHandler {
+    pub fn new() -> Self {
+        Self {}
+    }
+
+    async fn handle_command(&mut self, _args: Vec<String>) -> anyhow::Result<CommandStatus> {
+        Ok(CommandStatus::Done)
+    }
+}
+
+impl ExecuteCommand for TrivialCommandHandler {
+    fn execute(&mut self, args: Vec<String>) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
+        Box::pin(self.handle_command(args))
+    }
+}
+
+#[derive(Clone)]
+pub struct CommandArgInfo {
+    pub arg_type: CommandArgType,
+    pub name: Option<String>
+}
+impl CommandArgInfo {
+    pub fn new(arg_type: CommandArgType) -> Self {
+        CommandArgInfo {
+            arg_type,
+            name: None,
+        }
+    }
+
+    pub fn new_with_name(arg_type: CommandArgType, name: &str) -> Self {
+        CommandArgInfo {
+            arg_type,
+            name: Some(name.into()),
+        }
+    }
+
+    pub fn to_string(self) -> String {
+        format!("{}:{}", self.name.unwrap_or("".to_string()), self.arg_type)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CommandArgType {
+    I32,
+    F32,
+    String,
+    Custom,    
+}
+
+impl Display for CommandArgType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CommandArgType::I32 => write!(f, "i32"),
+            CommandArgType::F32 => write!(f, "f32"),
+            CommandArgType::String => write!(f, "String"),
+            CommandArgType::Custom => write!(f, "Custom"),
+        }
+    }
+}
+
+
+pub struct NewCommand {
+    /// Command desctiption that will be displayed in the help message
+    pub description: String,
+    /// Names and types of arguments to the command
+    pub args_info: Vec<CommandArgInfo>,
+    /// Command handler which should validate arguments and perform command logic
+    pub handler: Box<dyn ExecuteCommand>,
+}
+
+impl NewCommand {
+    pub fn execute(&mut self, args: &[&str]) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> +'_>> {
+        self.handler.execute(args.iter().map(|s| s.to_string()).collect())
+    }
+
+    /// Returns the string description of the argument types
+    pub fn arg_types(&self) -> Vec<String> {
+        self.args_info
+            .iter()
+            .map(|info| {
+                let info_string = info.clone().to_string();
+                let parts = info_string.split(':').collect::<Vec<_>>();
+                parts[1].to_string()
+            })
+            .collect()
+    }
+}
+
+pub struct Validator {}
+impl Validator {
+    pub fn validate(args: Vec<String>, arg_infos: Vec<CommandArgInfo>) -> std::result::Result<(), ArgsError> {        
+        if args.len() != arg_infos.len() {
+            return Err(ArgsError::WrongNumberOfArguments {
+                got: args.len(),
+                expected: arg_infos.len(),
+            });
+        }
+
+        for (i, arg_value) in args.iter().enumerate() {
+            let arg_info = arg_infos[i].clone();
+            let arg_type: CommandArgType = arg_info.arg_type;
+            match arg_type {
+                CommandArgType::I32 => {
+                    if let Err(err) = &arg_value.parse::<i32>() {
+                        return Err(ArgsError::WrongArgumentValue {
+                            argument: arg_value.to_string(),
+                            error: err.to_string()
+                        });
+                    }
+                },
+                CommandArgType::F32 => {
+                  if let Err(err) = &arg_value.parse::<f32>() {
+                        return Err(ArgsError::WrongArgumentValue {
+                            argument: arg_value.to_string(),
+                            error: err.to_string()
+                        });
+                    }  
+                }
+                CommandArgType::String => (),
+                CommandArgType::Custom => ()
+            }
+        }
+
+        Ok(())
+    }
+}
+
+
+// #[macro_export]
+// macro_rules! validator {
+//     ($($type:ty),*) => {
+//         |args: &[&str]| -> std::result::Result<(), $crate::command::ArgsError> {
+//             // check the number of arguments
+//             let n_args: usize = <[()]>::len(&[ $( $crate::validator!(@replace $type ()) ),* ]);
+//             if args.len() != n_args {
+//                 return Err($crate::command::ArgsError::WrongNumberOfArguments {
+//                     got: args.len(),
+//                     expected: n_args,
+//             });
+//             }
+//             #[allow(unused_variables, unused_mut)]
+//             let mut i = 0;
+//             #[allow(unused_assignments)]
+//             {
+//                 $(
+//                     if let Err(err) = args[i].parse::<$type>() {
+//                         return Err($crate::command::ArgsError::WrongArgumentValue {
+//                             argument: args[i].into(),
+//                             error: err.into()
+//                     });
+//                     }
+//                     i += 1;
+//                 )*
+//             }
+
+//             Ok(())
+//         }
+//     };
+//     // Helper that allows to replace one expression with another (possibly "noop" one)
+//     (@replace $_old:tt $new:expr) => { $new };
+// }
+
+
 /// Command handler.
 ///
 /// It should return the status in case of correct execution. In case of
@@ -11,7 +184,7 @@ use thiserror;
 ///
 /// The handler should validate command arguments and can return [`ArgsError`]
 /// to indicate that arguments were wrong.
-pub type Handler<'a> = dyn 'a + FnMut(&[&str]) -> anyhow::Result<CommandStatus>;
+pub type Handler<'a> = dyn 'a + FnMut(&[&str]) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + 'a>>;
 
 /// Single command that can be called in the REPL.
 ///
@@ -25,6 +198,7 @@ pub struct Command<'a> {
     pub args_info: Vec<String>,
     /// Command handler which should validate arguments and perform command logic
     pub handler: Box<Handler<'a>>,
+
 }
 
 /// Return status of a command.
@@ -86,15 +260,16 @@ pub enum ArgsError {
     #[error("failed to parse argument value '{argument}': {error}")]
     WrongArgumentValue {
         argument: String,
-        #[source]
-        error: anyhow::Error,
+        error: String,
     },
+    #[error("no command variant found for provided args")]
+    NoVariantFound,
 }
 
 impl<'a> Command<'a> {
     /// Validate the arguments and invoke the handler if arguments are correct.
-    pub fn run(&mut self, args: &[&str]) -> anyhow::Result<CommandStatus> {
-        (self.handler)(args)
+    pub async fn run(&mut self, args: &[&str]) -> anyhow::Result<CommandStatus> {
+        (self.handler)(args).await
     }
 
     /// Returns the string description of the argument types
@@ -114,94 +289,40 @@ impl<'a> std::fmt::Debug for Command<'a> {
     }
 }
 
-/// Generate argument validator based on a list of types (used by [`command!`]).
-///
-/// This macro can be used to generate a closure that takes arguments as `&[&str]`
-/// and makes sure that the nubmer of arguments is correct and all can be parsed
-/// to appropriate types. This macro should generally not be used. Prefer to use
-/// [`command!`] which will use this macro appropriately.
-///
-/// Example usage:
-/// ```rust
-/// # use easy_repl::validator;
-/// let validator = validator!(i32, f32, String);
-/// assert!(validator(&["10", "3.14", "hello"]).is_ok());
-/// ```
-///
-/// # Note
-///
-/// For string arguments use [`String`] instead of [`&str`].
-#[macro_export]
-macro_rules! validator {
-    ($($type:ty),*) => {
-        |args: &[&str]| -> std::result::Result<(), $crate::command::ArgsError> {
-            // check the number of arguments
-            let n_args: usize = <[()]>::len(&[ $( $crate::validator!(@replace $type ()) ),* ]);
-            if args.len() != n_args {
-                return Err($crate::command::ArgsError::WrongNumberOfArguments {
-                    got: args.len(),
-                    expected: n_args,
-            });
-            }
-            #[allow(unused_variables, unused_mut)]
-            let mut i = 0;
-            #[allow(unused_assignments)]
-            {
-                $(
-                    if let Err(err) = args[i].parse::<$type>() {
-                        return Err($crate::command::ArgsError::WrongArgumentValue {
-                            argument: args[i].into(),
-                            error: err.into()
-                    });
-                    }
-                    i += 1;
-                )*
-            }
+// #[macro_export]
+// macro_rules! validator {
+//     ($($type:ty),*) => {
+//         |args: &[&str]| -> std::result::Result<(), $crate::command::ArgsError> {
+//             // check the number of arguments
+//             let n_args: usize = <[()]>::len(&[ $( $crate::validator!(@replace $type ()) ),* ]);
+//             if args.len() != n_args {
+//                 return Err($crate::command::ArgsError::WrongNumberOfArguments {
+//                     got: args.len(),
+//                     expected: n_args,
+//             });
+//             }
+//             #[allow(unused_variables, unused_mut)]
+//             let mut i = 0;
+//             #[allow(unused_assignments)]
+//             {
+//                 $(
+//                     if let Err(err) = args[i].parse::<$type>() {
+//                         return Err($crate::command::ArgsError::WrongArgumentValue {
+//                             argument: args[i].into(),
+//                             error: err.into()
+//                     });
+//                     }
+//                     i += 1;
+//                 )*
+//             }
 
-            Ok(())
-        }
-    };
-    // Helper that allows to replace one expression with another (possibly "noop" one)
-    (@replace $_old:tt $new:expr) => { $new };
-}
+//             Ok(())
+//         }
+//     };
+//     // Helper that allows to replace one expression with another (possibly "noop" one)
+//     (@replace $_old:tt $new:expr) => { $new };
+// }
 
-// TODO: avoid parsing arguments 2 times by generating validation logic in the function
-/// Generate [`Command`] based on desctiption, list of arg types and a closure used in handler.
-///
-/// This macro should be used when creating [`Command`]s. It takes a string description,
-/// a list of argument types with optional names (in the form `name: type`) and a closure.
-/// The closure should have the same number of arguments as provided in the argument list.
-/// The generated command handler will parse all the arguments and call the closure.
-/// The closure used for handler is `move`.
-///
-/// The following command description:
-/// ```rust
-/// # use easy_repl::{CommandStatus, command};
-/// let cmd = command! {
-///     "Example command",
-///     (arg1: i32, arg2: String) => |arg1, arg2| {
-///         Ok(CommandStatus::Done)
-///     }
-/// };
-/// ```
-///
-/// will roughly be translated into something like (code here is slightly simplified):
-/// ```rust
-/// # use anyhow;
-/// # use easy_repl::{Command, CommandStatus, command, validator};
-/// let cmd = Command {
-///     description: "Example command".into(),
-///     args_info: vec!["arg1:i32".into(), "arg2:String".into()],
-///     handler: Box::new(move |args| -> anyhow::Result<CommandStatus> {
-///         let validator = validator!(i32, String);
-///         validator(args)?;
-///         let mut handler = |arg1, arg2| {
-///             Ok(CommandStatus::Done)
-///         };
-///         handler(args[0].parse::<i32>().unwrap(), args[1].parse::<String>().unwrap())
-///     }),
-/// };
-/// ```
 #[macro_export]
 macro_rules! command {
     ($description:expr, ( $($( $name:ident )? : $type:ty),* ) => $handler:expr $(,)?) => {
@@ -214,14 +335,18 @@ macro_rules! command {
         }
     };
     (@handler $($type:ty)*, $handler:expr) => {
-        Box::new( move |#[allow(unused_variables)] args| -> $crate::anyhow::Result<CommandStatus> {
-            let validator = $crate::validator!($($type),*);
-            validator(args)?;
-            #[allow(unused_mut)]
-            let mut handler = $handler;
-            command!(@handler_call handler; args; $($type;)*)
+        Box::new( move |#[allow(unused_variables)] args| -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
+            let args = args.clone();
+            Box::pin(async move {
+                let validator = $crate::validator!($($type),*);
+                validator(args)?;
+                #[allow(unused_mut)]
+                let mut handler = $handler;
+                command!(@handler_call handler; args; $($type;)*)
+            })            
         })
     };
+
     // transform element of $args into parsed function argument by calling .parse::<$type>().unwrap()
     // on each, this starts a recursive muncher that constructs following argument getters args[i]
     (@handler_call $handler:ident; $args:ident; $($types:ty;)*) => {
@@ -245,111 +370,96 @@ mod tests {
     use super::*;
 
     #[test]
-    fn manual_command() {
-        let mut cmd = Command {
-            description: "Test command".into(),
-            args_info: vec![],
-            handler: Box::new(|_args| Ok(CommandStatus::Done)),
-        };
-        match (cmd.handler)(&[]) {
-            Ok(CommandStatus::Done) => {}
-            _ => panic!("Wrong variant"),
-        };
-    }
-
-    #[test]
     fn validator_no_args() {
-        let validator = validator!();
-        assert!(validator(&[]).is_ok());
-        assert!(validator(&["hello"]).is_err());
+        let arg_types = vec![];
+        assert!(Validator::validate(vec![], arg_types.clone()).is_ok());
+        assert!(Validator::validate(vec!["hello".into()], arg_types.clone()).is_err())
     }
 
     #[test]
     fn validator_one_arg() {
-        let validator = validator!(i32);
-        assert!(validator(&[]).is_err());
-        assert!(validator(&["hello"]).is_err());
-        assert!(validator(&["13"]).is_ok());
+        let arg_types = vec![CommandArgInfo::new(CommandArgType::I32)];
+        assert!(Validator::validate(vec![], arg_types.clone()).is_err());
+        assert!(Validator::validate(vec!["hello".into()], arg_types.clone()).is_err());
+        assert!(Validator::validate(vec!["13".into()], arg_types.clone()).is_ok())
     }
 
     #[test]
     fn validator_multiple_args() {
-        let validator = validator!(i32, f32, String);
-        assert!(validator(&[]).is_err());
-        assert!(validator(&["1", "2.1", "hello"]).is_ok());
-        assert!(validator(&["1.2", "2.1", "hello"]).is_err());
-        assert!(validator(&["1", "a", "hello"]).is_err());
-        assert!(validator(&["1", "2.1", "hello", "world"]).is_err());
+        let arg_types = vec![CommandArgInfo::new(CommandArgType::I32), CommandArgInfo::new(CommandArgType::F32), CommandArgInfo::new(CommandArgType::String)];
+
+        assert!(Validator::validate(vec![], arg_types.clone()).is_err());
+        assert!(Validator::validate(vec!["1".into(), "2.1".into(), "hello".into()], arg_types.clone()).is_ok());
+        assert!(Validator::validate(vec!["1.2".into(), "2.1".into(), "hello".into()], arg_types.clone()).is_err());
+        assert!(Validator::validate(vec!["1".into(), "a".into(), "hello".into()], arg_types.clone()).is_err());
+        assert!(Validator::validate(vec!["1".into(), "2.1".into(), "hello".into(), "world".into()], arg_types.clone()).is_err());
     }
 
-    #[test]
-    fn command_auto_no_args() {
-        let mut cmd = command! {
-            "Example cmd",
-            () => || {
-                Ok(CommandStatus::Done)
-            }
+    #[tokio::test]
+    async fn manual_command() {
+        let mut cmd = NewCommand {
+            description: "Test command".into(),
+            args_info: vec![CommandArgInfo::new(CommandArgType::String)],
+            handler: Box::new(TrivialCommandHandler::new())
         };
-        match cmd.run(&[]) {
+        let result = cmd.execute(&["hello"]).await;
+
+        match result {
+            Ok(CommandStatus::Done) => {},
+            _ => panic!("Wrong variant")
+        }
+    }
+
+    #[tokio::test]
+    async fn command_with_args() {
+        let mut cmd = NewCommand {
+            description: "Example cmd".into(),
+            args_info: vec![CommandArgInfo::new(CommandArgType::I32), CommandArgInfo::new(CommandArgType::F32)],
+            handler: Box::new(TrivialCommandHandler::new())
+        };
+        let result = cmd.execute(&["13", "1.1"]).await;
+
+        match result {
             Ok(CommandStatus::Done) => {}
             Ok(v) => panic!("Wrong variant: {:?}", v),
             Err(e) => panic!("Error: {:?}", e),
         };
     }
 
-    #[test]
-    fn command_auto_with_args() {
-        let mut cmd = command! {
-            "Example cmd",
-            (:i32, :f32) => |_x, _y| {
-                Ok(CommandStatus::Done)
+    #[tokio::test]
+    async fn command_with_critical() {
+        struct WithCriticalCommandHandler {}
+        impl WithCriticalCommandHandler {
+            fn new() -> Self {
+                WithCriticalCommandHandler {}
             }
-        };
-        match cmd.run(&["13", "1.1"]) {
-            Ok(CommandStatus::Done) => {}
-            Ok(v) => panic!("Wrong variant: {:?}", v),
-            Err(e) => panic!("Error: {:?}", e),
-        };
-    }
 
-    #[test]
-    fn command_auto_with_critical() {
-        let mut cmd = command! {
-            "Example cmd",
-            (:i32, :f32) => |_x, _y| {
+            async fn handle_command(&mut self, _args: Vec<String>) -> anyhow::Result<CommandStatus> {
                 let err = std::io::Error::new(std::io::ErrorKind::InvalidData, "example error");
                 Err(CriticalError::Critical(err.into()).into())
             }
+        }
+
+        impl ExecuteCommand for WithCriticalCommandHandler {
+            fn execute(&mut self, args: Vec<String>) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
+                Box::pin(self.handle_command(args))
+            }
+        }
+
+        let mut cmd = NewCommand {
+            description: "Example cmd".into(),
+            args_info: vec![CommandArgInfo::new(CommandArgType::I32), CommandArgInfo::new(CommandArgType::F32)],
+            handler: Box::new(WithCriticalCommandHandler::new())
         };
-        match cmd.run(&["13", "1.1"]) {
+        let result = cmd.execute(&["13", "1.1"]).await;
+
+        match result {
             Ok(v) => panic!("Wrong variant: {:?}", v),
             Err(e) => {
                 if e.downcast_ref::<CriticalError>().is_none() {
-                    panic!("Wrong error: {:?}", e)
+                    panic!("Wrong error: {:?}", e)  
                 }
             }
         };
-    }
-
-    #[test]
-    fn command_auto_args_info() {
-        let cmd = command!("Example cmd", (:i32, :String, :f32) => |_x, _s, _y| { Ok(CommandStatus::Done) });
-        assert_eq!(cmd.args_info, &[":i32", ":String", ":f32"]);
-        let cmd = command!("Example cmd", (:i32, :f32) => |_x, _y| { Ok(CommandStatus::Done) });
-        assert_eq!(cmd.args_info, &[":i32", ":f32"]);
-        let cmd = command!("Example cmd", (:f32) => |_x| { Ok(CommandStatus::Done) });
-        assert_eq!(cmd.args_info, &[":f32"]);
-        let cmd = command!("Example cmd", () => || { Ok(CommandStatus::Done) });
-        let res: &[&str] = &[];
-        assert_eq!(cmd.args_info, res);
-    }
-
-    #[test]
-    fn command_auto_args_info_with_names() {
-        let cmd = command! {
-            "Example cmd",
-            (number:i32, name : String, :f32) => |_x, _s, _y| Ok(CommandStatus::Done)
-        };
-        assert_eq!(cmd.args_info, &["number:i32", "name:String", ":f32"]);
     }
 }

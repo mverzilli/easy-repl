@@ -8,7 +8,7 @@ use textwrap;
 use thiserror;
 use trie_rs::{Trie, TrieBuilder};
 
-use crate::command::{ArgsError, Command, CommandStatus, CriticalError};
+use crate::command::{ArgsError, CommandStatus, CriticalError, NewCommand};
 use crate::completion::{completion_candidates, Completion};
 
 /// Reserved command names. These commands are always added to REPL.
@@ -24,11 +24,11 @@ pub const RESERVED: &[(&str, &str)] = &[("help", "Show this help message"), ("qu
 /// [`Repl`] can be used in two ways: one can use the [`Repl::run`] method directly to just
 /// start the evaluation loop, or [`Repl::next`] can be used to get back control between
 /// loop steps.
-pub struct Repl<'a> {
+pub struct Repl {
     description: String,
     prompt: String,
     text_width: usize,
-    commands: HashMap<String, Vec<Command<'a>>>,
+    commands: HashMap<String, Vec<NewCommand>>,
     trie: Rc<Trie<u8>>,
     editor: rustyline::Editor<Completion>,
     out: Box<dyn Write>,
@@ -55,8 +55,8 @@ pub enum LoopStatus {
 ///     .build()
 ///     .expect("Failed to build REPL");
 /// ```
-pub struct ReplBuilder<'a> {
-    commands: Vec<(String, Command<'a>)>,
+pub struct ReplBuilder {
+    commands: Vec<(String, NewCommand)>,
     description: String,
     prompt: String,
     text_width: usize,
@@ -86,7 +86,7 @@ pub(crate) fn split_args(line: &str) -> Result<Vec<String>, shell_words::ParseEr
     shell_words::split(line)
 }
 
-impl<'a> Default for ReplBuilder<'a> {
+impl Default for ReplBuilder {
     fn default() -> Self {
         ReplBuilder {
             prompt: "> ".into(),
@@ -118,7 +118,7 @@ macro_rules! setters {
     };
 }
 
-impl<'a> ReplBuilder<'a> {
+impl ReplBuilder {
     setters! {
         /// Repl description shown in [`Repl::help`]. Defaults to an empty string.
         description: String
@@ -166,14 +166,14 @@ impl<'a> ReplBuilder<'a> {
     }
 
     /// Add a command with given `name`. Use along with the [`command!`] macro.
-    pub fn add(mut self, name: &str, cmd: Command<'a>) -> Self {
+    pub fn add(mut self, name: &str, cmd: NewCommand) -> Self {
         self.commands.push((name.into(), cmd));
         self
     }
 
     /// Finalize the configuration and return the REPL or error.
-    pub fn build(self) -> Result<Repl<'a>, BuilderError> {
-        let mut commands: HashMap<String, Vec<Command<'a>>> = HashMap::new();
+    pub fn build(self) -> Result<Repl, BuilderError> {
+        let mut commands: HashMap<String, Vec<NewCommand>> = HashMap::new();
         let mut trie = TrieBuilder::new();
         for (name, cmd) in self.commands {
             let cmds = commands.entry(name.clone()).or_default();
@@ -219,9 +219,9 @@ impl<'a> ReplBuilder<'a> {
     }
 }
 
-impl<'a> Repl<'a> {
+impl Repl {
     /// Start [`ReplBuilder`] with default values.
-    pub fn builder() -> ReplBuilder<'a> {
+    pub fn builder() -> ReplBuilder {
         ReplBuilder::default()
     }
 
@@ -264,7 +264,7 @@ impl<'a> Repl<'a> {
             .iter()
             .flat_map(|(name, cmds)| {
                 cmds.iter()
-                    .map(move |cmd| (signature(name, &cmd.args_info), cmd.description.clone()))
+                    .map(move |cmd| (signature(name, &cmd.arg_types()), cmd.description.clone()))
             })
             .collect();
 
@@ -290,7 +290,7 @@ Other commands:
         msg.trim().into()
     }
 
-    fn handle_line(&mut self, line: &str) -> anyhow::Result<LoopStatus> {
+    async fn handle_line(&mut self, line: &str) -> anyhow::Result<LoopStatus> {
         // if there is any parsing error just continue to next input
         let args = match split_args(line) {
             Err(err) => {
@@ -314,7 +314,7 @@ Other commands:
         } else {
             let name = &candidates[0];
             let tail: Vec<_> = args[1..].iter().map(String::as_str).collect();
-            match self.handle_command(name, &tail) {
+            match self.handle_command(name, &tail).await {
                 Ok(CommandStatus::Done) => Ok(LoopStatus::Continue),
                 Ok(CommandStatus::Quit) => Ok(LoopStatus::Break),
                 Err(err) if err.downcast_ref::<CriticalError>().is_some() => Err(err),
@@ -326,7 +326,7 @@ Other commands:
                         let cmds = self.commands.get_mut(name).unwrap();
                         writeln!(&mut self.out, "Usage:")?;
                         for cmd in cmds.iter() {
-                            writeln!(&mut self.out, "  {} {}", name, cmd.args_info.join(" "))?;
+                            writeln!(&mut self.out, "  {} {}", name, cmd.args_info.clone().into_iter().map(|info| info.to_string()).collect::<Vec<_>>().join(" "))?;
                         }
                     }
                     Ok(LoopStatus::Continue)
@@ -336,12 +336,12 @@ Other commands:
     }
 
     /// Run a single REPL iteration and return whether this is the last one or not.
-    pub fn next(&mut self) -> anyhow::Result<LoopStatus> {
+    pub async fn next(&mut self) -> anyhow::Result<LoopStatus> {
         match self.editor.readline(&self.prompt) {
             Ok(line) => {
                 if !line.trim().is_empty() {
                     self.editor.add_history_entry(line.trim());
-                    self.handle_line(&line)
+                    self.handle_line(&line).await
                 } else {
                     Ok(LoopStatus::Continue)
                 }
@@ -359,7 +359,7 @@ Other commands:
         }
     }
 
-    fn handle_command(&mut self, name: &str, args: &[&str]) -> anyhow::Result<CommandStatus> {
+    async fn handle_command(&mut self, name: &str, args: &[&str]) -> anyhow::Result<CommandStatus> {
         match name {
             "help" => {
                 let help = self.help();
@@ -375,7 +375,7 @@ Other commands:
                 let mut last_arg_err = None;
                 let cmds = self.commands.get_mut(name).unwrap();
                 for cmd in cmds.iter_mut() {
-                    match cmd.run(args) {
+                    match cmd.execute(args).await {
                         Err(e) => {
                             if !e.is::<ArgsError>() {
                                 return Err(e);
@@ -393,8 +393,8 @@ Other commands:
     }
 
     /// Run the evaluation loop until [`LoopStatus::Break`] is received.
-    pub fn run(&mut self) -> anyhow::Result<()> {
-        while self.next()? == LoopStatus::Continue {}
+    pub async fn run(&mut self) -> anyhow::Result<()> {
+        while self.next().await? == LoopStatus::Continue {}
         Ok(())
     }
 }
@@ -402,75 +402,146 @@ Other commands:
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::command;
-
+    use crate::command::{TrivialCommandHandler, CommandArgInfo, CommandArgType, ExecuteCommand};
+    use std::pin::Pin;
+    use std::future::Future;
+    
     #[test]
     fn builder_duplicate() {
+        let command_x_1 = NewCommand {
+            description: "Command X".into(),
+            args_info: vec![],
+            handler: Box::new(TrivialCommandHandler::new()),
+        };
+
+        let command_x_2 = NewCommand {
+            description: "Command X 2".into(),
+            args_info: vec![],
+            handler: Box::new(TrivialCommandHandler::new()),
+        };
+
         let result = Repl::builder()
-            .add("name_x", command!("", () => || Ok(CommandStatus::Done)))
-            .add("name_x", command!("", () => || Ok(CommandStatus::Done)))
+            .add("name_x", command_x_1)
+            .add("name_x", command_x_2)
             .build();
+
         assert!(matches!(result, Err(BuilderError::DuplicateCommands(_))));
     }
 
     #[test]
-    fn builder_non_duplicate() {
+    fn builder_overload() {
+        let command_x_1 = NewCommand {
+            description: "Command X".into(),
+            args_info: vec![],
+            handler: Box::new(TrivialCommandHandler::new()),
+        };
+
+        let command_x_2 = NewCommand {
+            description: "Command X 2".into(),
+            args_info: vec![CommandArgInfo::new(CommandArgType::I32)],
+            handler: Box::new(TrivialCommandHandler::new()),
+        };
+
         #[rustfmt::skip]
         let result = Repl::builder()
-            .add("name_x", command!("", (a: String) => |_| Ok(CommandStatus::Done)))
-            .add("name_x", command!("", (b: i32) => |_| Ok(CommandStatus::Done)))
+            .add("name_x", command_x_1)
+            .add("name_x", command_x_2)
             .build();
         assert!(matches!(result, Ok(_)));
     }
 
     #[test]
     fn builder_empty() {
+        let command_empty = NewCommand {
+            description: "".into(),
+            args_info: vec![],
+            handler: Box::new(TrivialCommandHandler::new()),
+        };
+
         let result = Repl::builder()
-            .add("", command!("", () => || Ok(CommandStatus::Done)))
+            .add("", command_empty)
             .build();
         assert!(matches!(result, Err(BuilderError::InvalidName(_))));
     }
 
     #[test]
     fn builder_spaces() {
+        let command_empty = NewCommand {
+            description: "".into(),
+            args_info: vec![],
+            handler: Box::new(TrivialCommandHandler::new()),
+        };
+
         let result = Repl::builder()
-            .add(
-                "name-with spaces",
-                command!("", () => || Ok(CommandStatus::Done)),
-            )
+            .add("name-with spaces", command_empty)
             .build();
         assert!(matches!(result, Err(BuilderError::InvalidName(_))));
     }
 
     #[test]
     fn builder_reserved() {
+        let command_help = NewCommand {
+            description: "".into(),
+            args_info: vec![],
+            handler: Box::new(TrivialCommandHandler::new()),
+        };
+
         let result = Repl::builder()
-            .add("help", command!("", () => || Ok(CommandStatus::Done)))
+            .add("help", command_help)
             .build();
         assert!(matches!(result, Err(BuilderError::ReservedName(_))));
+
+        let command_quit = NewCommand {
+            description: "".into(),
+            args_info: vec![],
+            handler: Box::new(TrivialCommandHandler::new()),
+        };
+
         let result = Repl::builder()
-            .add("quit", command!("", () => || Ok(CommandStatus::Done)))
+            .add("quit", command_quit)
             .build();
         assert!(matches!(result, Err(BuilderError::ReservedName(_))));
     }
 
-    #[test]
-    fn repl_quits() {
+    #[tokio::test]
+    async fn repl_quits() {
+        let command_foo = NewCommand {
+            description: "description".into(),
+            args_info: vec![],
+            handler: Box::new(TrivialCommandHandler::new()),
+        };
+
         let mut repl = Repl::builder()
-            .add(
-                "foo",
-                command!("description", () => || Ok(CommandStatus::Done)),
-            )
+            .add("foo", command_foo)
             .build()
             .unwrap();
-        assert_eq!(repl.handle_line("quit".into()).unwrap(), LoopStatus::Break);
+        assert_eq!(repl.handle_line("quit".into()).await.unwrap(), LoopStatus::Break);
+
+
+        struct QuittingCommandHandler {}
+        impl QuittingCommandHandler {
+            pub fn new() -> Self {
+                Self {}
+            }
+            async fn handle_command(&mut self, _args: Vec<String>) -> anyhow::Result<CommandStatus> {
+               Ok(CommandStatus::Quit)
+            }
+        }
+        impl ExecuteCommand for QuittingCommandHandler {
+            fn execute(&mut self, args: Vec<String>) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
+                Box::pin(self.handle_command(args))
+            }
+        }
+        let command_quit = NewCommand {
+            description: "description".into(),
+            args_info: vec![],
+            handler: Box::new(QuittingCommandHandler::new()),
+        };
+
         let mut repl = Repl::builder()
-            .add(
-                "foo",
-                command!("description", () => || Ok(CommandStatus::Quit)),
-            )
+            .add("foo", command_quit)                
             .build()
             .unwrap();
-        assert_eq!(repl.handle_line("foo".into()).unwrap(), LoopStatus::Break);
+        assert_eq!(repl.handle_line("foo".into()).await.unwrap(), LoopStatus::Break);
     }
 }
