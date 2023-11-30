@@ -164,40 +164,6 @@ impl Validator {
     }
 }
 
-// #[macro_export]
-// macro_rules! validator {
-//     ($($type:ty),*) => {
-//         |args: &[&str]| -> std::result::Result<(), $crate::command::ArgsError> {
-//             // check the number of arguments
-//             let n_args: usize = <[()]>::len(&[ $( $crate::validator!(@replace $type ()) ),* ]);
-//             if args.len() != n_args {
-//                 return Err($crate::command::ArgsError::WrongNumberOfArguments {
-//                     got: args.len(),
-//                     expected: n_args,
-//             });
-//             }
-//             #[allow(unused_variables, unused_mut)]
-//             let mut i = 0;
-//             #[allow(unused_assignments)]
-//             {
-//                 $(
-//                     if let Err(err) = args[i].parse::<$type>() {
-//                         return Err($crate::command::ArgsError::WrongArgumentValue {
-//                             argument: args[i].into(),
-//                             error: err.into()
-//                     });
-//                     }
-//                     i += 1;
-//                 )*
-//             }
-
-//             Ok(())
-//         }
-//     };
-//     // Helper that allows to replace one expression with another (possibly "noop" one)
-//     (@replace $_old:tt $new:expr) => { $new };
-// }
-
 /// Command handler.
 ///
 /// It should return the status in case of correct execution. In case of
@@ -208,20 +174,6 @@ impl Validator {
 /// to indicate that arguments were wrong.
 pub type Handler<'a> =
     dyn 'a + FnMut(&[&str]) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + 'a>>;
-
-/// Single command that can be called in the REPL.
-///
-/// Though it is possible to construct it by manually, it is not advised.
-/// One should rather use the provided [`command!`] macro which will generate
-/// appropriate arguments validation and `args_info` based on passed specification.
-pub struct Command<'a> {
-    /// Command desctiption that will be displayed in the help message
-    pub description: String,
-    /// Names and types of arguments to the command
-    pub args_info: Vec<String>,
-    /// Command handler which should validate arguments and perform command logic
-    pub handler: Box<Handler<'a>>,
-}
 
 /// Return status of a command.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -283,105 +235,6 @@ pub enum ArgsError {
     WrongArgumentValue { argument: String, error: String },
     #[error("no command variant found for provided args")]
     NoVariantFound,
-}
-
-impl<'a> Command<'a> {
-    /// Validate the arguments and invoke the handler if arguments are correct.
-    pub async fn run(&mut self, args: &[&str]) -> anyhow::Result<CommandStatus> {
-        (self.handler)(args).await
-    }
-
-    /// Returns the string description of the argument types
-    pub fn arg_types(&self) -> Vec<&str> {
-        self.args_info
-            .iter()
-            .map(|info| info.split(':').collect::<Vec<_>>()[1])
-            .collect()
-    }
-}
-
-impl<'a> std::fmt::Debug for Command<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Command")
-            .field("description", &self.description)
-            .finish()
-    }
-}
-
-// #[macro_export]
-// macro_rules! validator {
-//     ($($type:ty),*) => {
-//         |args: &[&str]| -> std::result::Result<(), $crate::command::ArgsError> {
-//             // check the number of arguments
-//             let n_args: usize = <[()]>::len(&[ $( $crate::validator!(@replace $type ()) ),* ]);
-//             if args.len() != n_args {
-//                 return Err($crate::command::ArgsError::WrongNumberOfArguments {
-//                     got: args.len(),
-//                     expected: n_args,
-//             });
-//             }
-//             #[allow(unused_variables, unused_mut)]
-//             let mut i = 0;
-//             #[allow(unused_assignments)]
-//             {
-//                 $(
-//                     if let Err(err) = args[i].parse::<$type>() {
-//                         return Err($crate::command::ArgsError::WrongArgumentValue {
-//                             argument: args[i].into(),
-//                             error: err.into()
-//                     });
-//                     }
-//                     i += 1;
-//                 )*
-//             }
-
-//             Ok(())
-//         }
-//     };
-//     // Helper that allows to replace one expression with another (possibly "noop" one)
-//     (@replace $_old:tt $new:expr) => { $new };
-// }
-
-#[macro_export]
-macro_rules! command {
-    ($description:expr, ( $($( $name:ident )? : $type:ty),* ) => $handler:expr $(,)?) => {
-        $crate::command::Command {
-            description: $description.into(),
-            args_info: vec![ $(
-                concat!($(stringify!($name), )? ":", stringify!($type)).into()
-            ),* ], // TODO
-            handler: command!(@handler $($type)*, $handler),
-        }
-    };
-    (@handler $($type:ty)*, $handler:expr) => {
-        Box::new( move |#[allow(unused_variables)] args| -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
-            let args = args.clone();
-            Box::pin(async move {
-                let validator = $crate::validator!($($type),*);
-                validator(args)?;
-                #[allow(unused_mut)]
-                let mut handler = $handler;
-                command!(@handler_call handler; args; $($type;)*)
-            })
-        })
-    };
-
-    // transform element of $args into parsed function argument by calling .parse::<$type>().unwrap()
-    // on each, this starts a recursive muncher that constructs following argument getters args[i]
-    (@handler_call $handler:ident; $args:ident; $($types:ty;)*) => {
-        command!(@handler_call $handler, $args, 0; $($types;)* =>)
-    };
-    // $num is used to index $args; pop $type from beginning of list, add new parsed at the endo of $parsed
-    (@handler_call $handler:ident, $args:ident, $num:expr; $type:ty; $($types:ty;)* => $($parsed:expr;)*) => {
-        command!(@handler_call $handler, $args, $num + 1;
-            $($types;)* =>
-            $($parsed;)* $args[$num].parse::<$type>().unwrap();
-        )
-    };
-    // finally when there are no more types emit code that calls the handler with all arguments parsed
-    (@handler_call $handler:ident, $args:ident, $num:expr; => $($parsed:expr;)*) => {
-        $handler( $($parsed),* )
-    };
 }
 
 #[cfg(test)]

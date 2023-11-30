@@ -6,5 +6,5 @@ pub mod repl;
 
 pub use anyhow;
 
-pub use command::{Command, CommandStatus, Critical, CriticalError};
+pub use command::{CommandStatus, Critical, CriticalError};
 pub use repl::Repl;
