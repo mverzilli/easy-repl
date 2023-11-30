@@ -1,4 +1,4 @@
-# mini-async-repl [![crates.io](https://img.shields.io/crates/v/mini-async-repl.svg)](https://crates.io/crates/mini-async-repl) [![docs.rs](https://docs.rs/mini-async-repl/badge.svg)](https://docs.rs/mini-sync-repl)
+# mini-async-repl [![crates.io](https://img.shields.io/crates/v/mini-async-repl.svg)](https://crates.io/crates/mini-async-repl) [![docs.rs](https://docs.rs/mini-async-repl/badge.svg)](https://docs.rs/mini-async-repl)
 
 A minimally functional, async-oriented REPL. 
 
