@@ -3,13 +3,16 @@
 use anyhow;
 use thiserror;
 
-use std::pin::Pin;
-use std::future::Future;
 use std::fmt::Display;
 use std::fmt::Formatter;
+use std::future::Future;
+use std::pin::Pin;
 
 pub trait ExecuteCommand {
-    fn execute(&mut self, args: Vec<String>) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>>;
+    fn execute(
+        &mut self,
+        args: Vec<String>,
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>>;
 }
 
 pub struct TrivialCommandHandler {}
@@ -24,7 +27,10 @@ impl TrivialCommandHandler {
 }
 
 impl ExecuteCommand for TrivialCommandHandler {
-    fn execute(&mut self, args: Vec<String>) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
+    fn execute(
+        &mut self,
+        args: Vec<String>,
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         Box::pin(self.handle_command(args))
     }
 }
@@ -32,7 +38,7 @@ impl ExecuteCommand for TrivialCommandHandler {
 #[derive(Clone)]
 pub struct CommandArgInfo {
     pub arg_type: CommandArgType,
-    pub name: Option<String>
+    pub name: Option<String>,
 }
 impl CommandArgInfo {
     pub fn new(arg_type: CommandArgType) -> Self {
@@ -59,7 +65,7 @@ pub enum CommandArgType {
     I32,
     F32,
     String,
-    Custom,    
+    Custom,
 }
 
 impl Display for CommandArgType {
@@ -73,7 +79,6 @@ impl Display for CommandArgType {
     }
 }
 
-
 pub struct NewCommand {
     /// Command desctiption that will be displayed in the help message
     pub description: String,
@@ -84,8 +89,12 @@ pub struct NewCommand {
 }
 
 impl NewCommand {
-    pub fn execute(&mut self, args: &[&str]) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> +'_>> {
-        self.handler.execute(args.iter().map(|s| s.to_string()).collect())
+    pub fn execute(
+        &mut self,
+        args: &[&str],
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
+        self.handler
+            .execute(args.iter().map(|s| s.to_string()).collect())
     }
 
     /// Returns the string description of the argument types
@@ -103,7 +112,10 @@ impl NewCommand {
 
 pub struct Validator {}
 impl Validator {
-    pub fn validate(args: Vec<String>, arg_infos: Vec<CommandArgInfo>) -> std::result::Result<(), ArgsError> {        
+    pub fn validate(
+        args: Vec<String>,
+        arg_infos: Vec<CommandArgInfo>,
+    ) -> std::result::Result<(), ArgsError> {
         if args.len() != arg_infos.len() {
             return Err(ArgsError::WrongNumberOfArguments {
                 got: args.len(),
@@ -119,27 +131,26 @@ impl Validator {
                     if let Err(err) = &arg_value.parse::<i32>() {
                         return Err(ArgsError::WrongArgumentValue {
                             argument: arg_value.to_string(),
-                            error: err.to_string()
+                            error: err.to_string(),
                         });
                     }
-                },
+                }
                 CommandArgType::F32 => {
-                  if let Err(err) = &arg_value.parse::<f32>() {
+                    if let Err(err) = &arg_value.parse::<f32>() {
                         return Err(ArgsError::WrongArgumentValue {
                             argument: arg_value.to_string(),
-                            error: err.to_string()
+                            error: err.to_string(),
                         });
-                    }  
+                    }
                 }
                 CommandArgType::String => (),
-                CommandArgType::Custom => ()
+                CommandArgType::Custom => (),
             }
         }
 
         Ok(())
     }
 }
-
 
 // #[macro_export]
 // macro_rules! validator {
@@ -175,7 +186,6 @@ impl Validator {
 //     (@replace $_old:tt $new:expr) => { $new };
 // }
 
-
 /// Command handler.
 ///
 /// It should return the status in case of correct execution. In case of
@@ -184,7 +194,8 @@ impl Validator {
 ///
 /// The handler should validate command arguments and can return [`ArgsError`]
 /// to indicate that arguments were wrong.
-pub type Handler<'a> = dyn 'a + FnMut(&[&str]) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + 'a>>;
+pub type Handler<'a> =
+    dyn 'a + FnMut(&[&str]) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + 'a>>;
 
 /// Single command that can be called in the REPL.
 ///
@@ -198,7 +209,6 @@ pub struct Command<'a> {
     pub args_info: Vec<String>,
     /// Command handler which should validate arguments and perform command logic
     pub handler: Box<Handler<'a>>,
-
 }
 
 /// Return status of a command.
@@ -258,10 +268,7 @@ pub enum ArgsError {
     #[error("wrong number of arguments: got {got}, expected {expected}")]
     WrongNumberOfArguments { got: usize, expected: usize },
     #[error("failed to parse argument value '{argument}': {error}")]
-    WrongArgumentValue {
-        argument: String,
-        error: String,
-    },
+    WrongArgumentValue { argument: String, error: String },
     #[error("no command variant found for provided args")]
     NoVariantFound,
 }
@@ -343,7 +350,7 @@ macro_rules! command {
                 #[allow(unused_mut)]
                 let mut handler = $handler;
                 command!(@handler_call handler; args; $($type;)*)
-            })            
+            })
         })
     };
 
@@ -386,13 +393,33 @@ mod tests {
 
     #[test]
     fn validator_multiple_args() {
-        let arg_types = vec![CommandArgInfo::new(CommandArgType::I32), CommandArgInfo::new(CommandArgType::F32), CommandArgInfo::new(CommandArgType::String)];
+        let arg_types = vec![
+            CommandArgInfo::new(CommandArgType::I32),
+            CommandArgInfo::new(CommandArgType::F32),
+            CommandArgInfo::new(CommandArgType::String),
+        ];
 
         assert!(Validator::validate(vec![], arg_types.clone()).is_err());
-        assert!(Validator::validate(vec!["1".into(), "2.1".into(), "hello".into()], arg_types.clone()).is_ok());
-        assert!(Validator::validate(vec!["1.2".into(), "2.1".into(), "hello".into()], arg_types.clone()).is_err());
-        assert!(Validator::validate(vec!["1".into(), "a".into(), "hello".into()], arg_types.clone()).is_err());
-        assert!(Validator::validate(vec!["1".into(), "2.1".into(), "hello".into(), "world".into()], arg_types.clone()).is_err());
+        assert!(Validator::validate(
+            vec!["1".into(), "2.1".into(), "hello".into()],
+            arg_types.clone()
+        )
+        .is_ok());
+        assert!(Validator::validate(
+            vec!["1.2".into(), "2.1".into(), "hello".into()],
+            arg_types.clone()
+        )
+        .is_err());
+        assert!(Validator::validate(
+            vec!["1".into(), "a".into(), "hello".into()],
+            arg_types.clone()
+        )
+        .is_err());
+        assert!(Validator::validate(
+            vec!["1".into(), "2.1".into(), "hello".into(), "world".into()],
+            arg_types.clone()
+        )
+        .is_err());
     }
 
     #[tokio::test]
@@ -400,13 +427,13 @@ mod tests {
         let mut cmd = NewCommand {
             description: "Test command".into(),
             args_info: vec![CommandArgInfo::new(CommandArgType::String)],
-            handler: Box::new(TrivialCommandHandler::new())
+            handler: Box::new(TrivialCommandHandler::new()),
         };
         let result = cmd.execute(&["hello"]).await;
 
         match result {
-            Ok(CommandStatus::Done) => {},
-            _ => panic!("Wrong variant")
+            Ok(CommandStatus::Done) => {}
+            _ => panic!("Wrong variant"),
         }
     }
 
@@ -414,8 +441,11 @@ mod tests {
     async fn command_with_args() {
         let mut cmd = NewCommand {
             description: "Example cmd".into(),
-            args_info: vec![CommandArgInfo::new(CommandArgType::I32), CommandArgInfo::new(CommandArgType::F32)],
-            handler: Box::new(TrivialCommandHandler::new())
+            args_info: vec![
+                CommandArgInfo::new(CommandArgType::I32),
+                CommandArgInfo::new(CommandArgType::F32),
+            ],
+            handler: Box::new(TrivialCommandHandler::new()),
         };
         let result = cmd.execute(&["13", "1.1"]).await;
 
@@ -434,22 +464,31 @@ mod tests {
                 WithCriticalCommandHandler {}
             }
 
-            async fn handle_command(&mut self, _args: Vec<String>) -> anyhow::Result<CommandStatus> {
+            async fn handle_command(
+                &mut self,
+                _args: Vec<String>,
+            ) -> anyhow::Result<CommandStatus> {
                 let err = std::io::Error::new(std::io::ErrorKind::InvalidData, "example error");
                 Err(CriticalError::Critical(err.into()).into())
             }
         }
 
         impl ExecuteCommand for WithCriticalCommandHandler {
-            fn execute(&mut self, args: Vec<String>) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
+            fn execute(
+                &mut self,
+                args: Vec<String>,
+            ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
                 Box::pin(self.handle_command(args))
             }
         }
 
         let mut cmd = NewCommand {
             description: "Example cmd".into(),
-            args_info: vec![CommandArgInfo::new(CommandArgType::I32), CommandArgInfo::new(CommandArgType::F32)],
-            handler: Box::new(WithCriticalCommandHandler::new())
+            args_info: vec![
+                CommandArgInfo::new(CommandArgType::I32),
+                CommandArgInfo::new(CommandArgType::F32),
+            ],
+            handler: Box::new(WithCriticalCommandHandler::new()),
         };
         let result = cmd.execute(&["13", "1.1"]).await;
 
@@ -457,7 +496,7 @@ mod tests {
             Ok(v) => panic!("Wrong variant: {:?}", v),
             Err(e) => {
                 if e.downcast_ref::<CriticalError>().is_none() {
-                    panic!("Wrong error: {:?}", e)  
+                    panic!("Wrong error: {:?}", e)
                 }
             }
         };

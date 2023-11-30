@@ -1,25 +1,17 @@
 use anyhow::{self, Context};
 use easy_repl::{
-    command::{
-        ExecuteCommand,
-        NewCommand,
-        CommandArgInfo,
-        CommandArgType,
-        Validator,
-        ArgsError,
-    },
-    CommandStatus,
-    Repl,
+    command::{ArgsError, CommandArgInfo, CommandArgType, ExecuteCommand, NewCommand, Validator},
+    CommandStatus, Repl,
 };
-use std::pin::Pin;
 use std::future::Future;
+use std::pin::Pin;
 
 struct SayHelloCommandHandler {}
 impl SayHelloCommandHandler {
     pub fn new() -> Self {
         Self {}
     }
-    async fn handle_command(&mut self, name: String) -> anyhow::Result<CommandStatus> {        
+    async fn handle_command(&mut self, name: String) -> anyhow::Result<CommandStatus> {
         println!("Hello {}!", name);
         Ok(CommandStatus::Done)
     }
@@ -31,10 +23,17 @@ impl SayHelloCommandHandler {
     }
 }
 impl ExecuteCommand for SayHelloCommandHandler {
-    fn execute(&mut self, args: Vec<String>) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
-        let valid = Validator::validate(args.clone(), vec![
-            CommandArgInfo::new_with_name(CommandArgType::String, "name"),
-        ]);
+    fn execute(
+        &mut self,
+        args: Vec<String>,
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
+        let valid = Validator::validate(
+            args.clone(),
+            vec![CommandArgInfo::new_with_name(
+                CommandArgType::String,
+                "name",
+            )],
+        );
         if let Err(e) = valid {
             return Box::pin(AddCommandHandler::resolved(Err(e)));
         }
@@ -47,9 +46,9 @@ impl AddCommandHandler {
     pub fn new() -> Self {
         Self {}
     }
-    async fn handle_command(&mut self, x: i32, y:i32) -> anyhow::Result<CommandStatus> {        
+    async fn handle_command(&mut self, x: i32, y: i32) -> anyhow::Result<CommandStatus> {
         println!("{} + {} = {}", x, y, x + y);
-        Ok(CommandStatus::Done) 
+        Ok(CommandStatus::Done)
     }
     async fn resolved(result: Result<(), ArgsError>) -> Result<CommandStatus, anyhow::Error> {
         match result {
@@ -59,12 +58,18 @@ impl AddCommandHandler {
     }
 }
 impl ExecuteCommand for AddCommandHandler {
-    fn execute(&mut self, args: Vec<String>) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
+    fn execute(
+        &mut self,
+        args: Vec<String>,
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         // TODO: validator
-        let valid = Validator::validate(args.clone(), vec![
-            CommandArgInfo::new_with_name(CommandArgType::I32, "X"),
-            CommandArgInfo::new_with_name(CommandArgType::I32, "Y"),
-        ]);
+        let valid = Validator::validate(
+            args.clone(),
+            vec![
+                CommandArgInfo::new_with_name(CommandArgType::I32, "X"),
+                CommandArgInfo::new_with_name(CommandArgType::I32, "Y"),
+            ],
+        );
         if let Err(e) = valid {
             return Box::pin(AddCommandHandler::resolved(Err(e)));
         }
@@ -74,7 +79,7 @@ impl ExecuteCommand for AddCommandHandler {
 
         match (x, y) {
             (Ok(x), Ok(y)) => Box::pin(self.handle_command(x, y)),
-            _ => panic!("Unreachable, validator should have covered this")
+            _ => panic!("Unreachable, validator should have covered this"),
         }
     }
 }
@@ -83,7 +88,10 @@ impl ExecuteCommand for AddCommandHandler {
 async fn main() -> anyhow::Result<()> {
     let hello_cmd = NewCommand {
         description: "Say hello".into(),
-        args_info: vec![CommandArgInfo::new_with_name(CommandArgType::String, "name")],
+        args_info: vec![CommandArgInfo::new_with_name(
+            CommandArgType::String,
+            "name",
+        )],
         handler: Box::new(SayHelloCommandHandler::new()),
     };
 

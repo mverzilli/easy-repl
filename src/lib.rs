@@ -1,6 +1,5 @@
 // #![deny(missing_docs)]
 
-
 pub mod command;
 mod completion;
 pub mod repl;

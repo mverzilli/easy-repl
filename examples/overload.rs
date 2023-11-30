@@ -1,18 +1,10 @@
 use anyhow::{self, Context};
 use easy_repl::{
-    command::{
-        ExecuteCommand,
-        NewCommand,
-        CommandArgInfo,
-        CommandArgType,
-        Validator,
-        ArgsError,
-    },
-    CommandStatus,
-    Repl,    
+    command::{ArgsError, CommandArgInfo, CommandArgType, ExecuteCommand, NewCommand, Validator},
+    CommandStatus, Repl,
 };
-use std::pin::Pin;
 use std::future::Future;
+use std::pin::Pin;
 
 struct DescribeCommandHandler {}
 impl DescribeCommandHandler {
@@ -28,7 +20,7 @@ impl DescribeCommandHandler {
         Ok(CommandStatus::Done)
     }
     async fn handle_variant_3(&mut self, a: i32, b: String) -> anyhow::Result<CommandStatus> {
-    	println!("An integer `{}` and a string `{}`", a, b);
+        println!("An integer `{}` and a string `{}`", a, b);
         Ok(CommandStatus::Done)
     }
     async fn resolved(result: Result<(), ArgsError>) -> Result<CommandStatus, anyhow::Error> {
@@ -39,41 +31,56 @@ impl DescribeCommandHandler {
     }
 }
 impl ExecuteCommand for DescribeCommandHandler {
-    fn execute(&mut self, args: Vec<String>) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
+    fn execute(
+        &mut self,
+        args: Vec<String>,
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         let variant_1 = Validator::validate(args.clone(), vec![]);
         if let Ok(()) = variant_1 {
-        	return Box::pin(self.handle_variant_1());
+            return Box::pin(self.handle_variant_1());
         }
 
-        let variant_2 = Validator::validate(args.clone(), vec![
-        	CommandArgInfo::new_with_name(CommandArgType::I32, "a"),
-        	CommandArgInfo::new_with_name(CommandArgType::I32, "b"),
-        ]);
-		if let Ok(()) = variant_2 {
-			let a = args[0].parse::<i32>();
-        	let b = args[1].parse::<i32>();
+        let variant_2 = Validator::validate(
+            args.clone(),
+            vec![
+                CommandArgInfo::new_with_name(CommandArgType::I32, "a"),
+                CommandArgInfo::new_with_name(CommandArgType::I32, "b"),
+            ],
+        );
+        if let Ok(()) = variant_2 {
+            let a = args[0].parse::<i32>();
+            let b = args[1].parse::<i32>();
 
-	        match (a, b) {
-	            (Ok(a), Ok(b)) => { return Box::pin(self.handle_variant_2(a, b)); },
-	            _ => ()
-	        }
+            match (a, b) {
+                (Ok(a), Ok(b)) => {
+                    return Box::pin(self.handle_variant_2(a, b));
+                }
+                _ => (),
+            }
         }
 
-        let variant_3 = Validator::validate(args.clone(), vec![
-        	CommandArgInfo::new_with_name(CommandArgType::I32, "a"),
-        	CommandArgInfo::new_with_name(CommandArgType::String, "b"),
-    	]);
-		if let Ok(()) = variant_3 {
-			let a = args[0].parse::<i32>();
-        	let b = args[1].clone();
+        let variant_3 = Validator::validate(
+            args.clone(),
+            vec![
+                CommandArgInfo::new_with_name(CommandArgType::I32, "a"),
+                CommandArgInfo::new_with_name(CommandArgType::String, "b"),
+            ],
+        );
+        if let Ok(()) = variant_3 {
+            let a = args[0].parse::<i32>();
+            let b = args[1].clone();
 
-	        match a {
-	            Ok(a) => { return Box::pin(self.handle_variant_3(a, b)); },
-	            _ => ()
-	        }
+            match a {
+                Ok(a) => {
+                    return Box::pin(self.handle_variant_3(a, b));
+                }
+                _ => (),
+            }
         }
 
-        Box::pin(DescribeCommandHandler::resolved(Err(ArgsError::NoVariantFound)))
+        Box::pin(DescribeCommandHandler::resolved(Err(
+            ArgsError::NoVariantFound,
+        )))
     }
 }
 

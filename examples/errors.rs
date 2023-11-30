@@ -3,26 +3,19 @@ use std::time::Instant;
 use anyhow::{self, Context};
 use easy_repl::{
     command::{
-        ExecuteCommand,
-        NewCommand,
-        CommandArgInfo,
-        CommandArgType,
-        Validator,
-        ArgsError,
-        Critical,
+        ArgsError, CommandArgInfo, CommandArgType, Critical, ExecuteCommand, NewCommand, Validator,
     },
-    CommandStatus,
-    Repl,
+    CommandStatus, Repl,
 };
-use std::pin::Pin;
 use std::future::Future;
+use std::pin::Pin;
 
 struct OkCommandHandler {}
 impl OkCommandHandler {
     pub fn new() -> Self {
         Self {}
     }
-    async fn handle_command(&mut self) -> anyhow::Result<CommandStatus> {        
+    async fn handle_command(&mut self) -> anyhow::Result<CommandStatus> {
         Ok(CommandStatus::Done)
     }
     async fn resolved(result: Result<(), ArgsError>) -> Result<CommandStatus, anyhow::Error> {
@@ -33,10 +26,17 @@ impl OkCommandHandler {
     }
 }
 impl ExecuteCommand for OkCommandHandler {
-    fn execute(&mut self, args: Vec<String>) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
-        let valid = Validator::validate(args.clone(), vec![
-            CommandArgInfo::new_with_name(CommandArgType::String, "name"),
-        ]);
+    fn execute(
+        &mut self,
+        args: Vec<String>,
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
+        let valid = Validator::validate(
+            args.clone(),
+            vec![CommandArgInfo::new_with_name(
+                CommandArgType::String,
+                "name",
+            )],
+        );
         if let Err(e) = valid {
             return Box::pin(OkCommandHandler::resolved(Err(e)));
         }
@@ -49,7 +49,7 @@ impl RecoverableErrorHandler {
     pub fn new() -> Self {
         Self {}
     }
-    async fn handle_command(&mut self, text: String) -> anyhow::Result<CommandStatus> {        
+    async fn handle_command(&mut self, text: String) -> anyhow::Result<CommandStatus> {
         Self::may_throw(text)?;
         Ok(CommandStatus::Done)
     }
@@ -66,8 +66,17 @@ impl RecoverableErrorHandler {
     }
 }
 impl ExecuteCommand for RecoverableErrorHandler {
-    fn execute(&mut self, args: Vec<String>) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
-        let valid = Validator::validate(args.clone(), vec![CommandArgInfo::new_with_name(CommandArgType::String, "text")]);
+    fn execute(
+        &mut self,
+        args: Vec<String>,
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
+        let valid = Validator::validate(
+            args.clone(),
+            vec![CommandArgInfo::new_with_name(
+                CommandArgType::String,
+                "text",
+            )],
+        );
         if let Err(e) = valid {
             return Box::pin(RecoverableErrorHandler::resolved(Err(e)));
         }
@@ -80,7 +89,7 @@ impl CriticalErrorHandler {
     pub fn new() -> Self {
         Self {}
     }
-    async fn handle_command(&mut self, text: String) -> anyhow::Result<CommandStatus> {        
+    async fn handle_command(&mut self, text: String) -> anyhow::Result<CommandStatus> {
         // Short notation using the Critical trait
         Self::may_throw(text).into_critical()?;
         // More explicitly it could be:
@@ -106,8 +115,17 @@ impl CriticalErrorHandler {
     }
 }
 impl ExecuteCommand for CriticalErrorHandler {
-    fn execute(&mut self, args: Vec<String>) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
-        let valid = Validator::validate(args.clone(), vec![CommandArgInfo::new_with_name(CommandArgType::String, "text")]);
+    fn execute(
+        &mut self,
+        args: Vec<String>,
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
+        let valid = Validator::validate(
+            args.clone(),
+            vec![CommandArgInfo::new_with_name(
+                CommandArgType::String,
+                "text",
+            )],
+        );
         if let Err(e) = valid {
             return Box::pin(CriticalErrorHandler::resolved(Err(e)));
         }
@@ -131,7 +149,6 @@ impl RouletteErrorHandler {
             _ => (),
         }
         Ok(CommandStatus::Done)
-
     }
     async fn resolved(result: Result<(), ArgsError>) -> Result<CommandStatus, anyhow::Error> {
         match result {
@@ -146,7 +163,10 @@ impl RouletteErrorHandler {
     }
 }
 impl ExecuteCommand for RouletteErrorHandler {
-    fn execute(&mut self, args: Vec<String>) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
+    fn execute(
+        &mut self,
+        args: Vec<String>,
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         let valid = Validator::validate(args.clone(), vec![]);
         if let Err(e) = valid {
             return Box::pin(RouletteErrorHandler::resolved(Err(e)));

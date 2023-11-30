@@ -2,7 +2,7 @@
 name = "mini-async-repl"
 version = "0.2.1"
 authors = ["Martin Verzilli <martin.verzilli@gmail.com", "Jędrzej Boczar <jedrzej.boczar@gmail.com>"]
-edition = "2023"
+edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "An async-first REPL"
 repository = "https://github.com/manastech/mini-async-repl"

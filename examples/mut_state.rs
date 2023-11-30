@@ -1,28 +1,20 @@
 use anyhow::{self, Context};
 use easy_repl::{
-    command::{
-        ExecuteCommand,
-        NewCommand,
-        CommandArgInfo,
-        CommandArgType,
-        Validator,
-        ArgsError,
-    },
-    CommandStatus,
-    Repl,    
+    command::{ArgsError, CommandArgInfo, CommandArgType, ExecuteCommand, NewCommand, Validator},
+    CommandStatus, Repl,
 };
-use std::pin::Pin;
-use std::future::Future;
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::future::Future;
+use std::pin::Pin;
+use std::rc::Rc;
 
 struct CountCommandHandler {}
 impl CountCommandHandler {
     pub fn new() -> Self {
         Self {}
     }
-    async fn handle_command(&mut self, x: i32, y:i32) -> anyhow::Result<CommandStatus> {
-    	for i in x..=y {
+    async fn handle_command(&mut self, x: i32, y: i32) -> anyhow::Result<CommandStatus> {
+        for i in x..=y {
             print!(" {}", i);
         }
         println!();
@@ -36,12 +28,18 @@ impl CountCommandHandler {
     }
 }
 impl ExecuteCommand for CountCommandHandler {
-    fn execute(&mut self, args: Vec<String>) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
+    fn execute(
+        &mut self,
+        args: Vec<String>,
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         // TODO: validator
-        let valid = Validator::validate(args.clone(), vec![
-            CommandArgInfo::new_with_name(CommandArgType::I32, "X"),
-            CommandArgInfo::new_with_name(CommandArgType::I32, "Y"),
-        ]);
+        let valid = Validator::validate(
+            args.clone(),
+            vec![
+                CommandArgInfo::new_with_name(CommandArgType::I32, "X"),
+                CommandArgInfo::new_with_name(CommandArgType::I32, "Y"),
+            ],
+        );
         if let Err(e) = valid {
             return Box::pin(CountCommandHandler::resolved(Err(e)));
         }
@@ -51,7 +49,7 @@ impl ExecuteCommand for CountCommandHandler {
 
         match (x, y) {
             (Ok(x), Ok(y)) => Box::pin(self.handle_command(x, y)),
-            _ => panic!("Unreachable, validator should have covered this")
+            _ => panic!("Unreachable, validator should have covered this"),
         }
     }
 }
@@ -61,7 +59,7 @@ impl SayCommandHandler {
     pub fn new() -> Self {
         Self {}
     }
-    async fn handle_command(&mut self, x: f32) -> anyhow::Result<CommandStatus> {        
+    async fn handle_command(&mut self, x: f32) -> anyhow::Result<CommandStatus> {
         println!("x is equal to {}", x);
         Ok(CommandStatus::Done)
     }
@@ -73,10 +71,14 @@ impl SayCommandHandler {
     }
 }
 impl ExecuteCommand for SayCommandHandler {
-    fn execute(&mut self, args: Vec<String>) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
-        let valid = Validator::validate(args.clone(), vec![
-            CommandArgInfo::new_with_name(CommandArgType::F32, "X"),
-        ]);
+    fn execute(
+        &mut self,
+        args: Vec<String>,
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
+        let valid = Validator::validate(
+            args.clone(),
+            vec![CommandArgInfo::new_with_name(CommandArgType::F32, "X")],
+        );
         if let Err(e) = valid {
             return Box::pin(SayCommandHandler::resolved(Err(e)));
         }
@@ -84,20 +86,20 @@ impl ExecuteCommand for SayCommandHandler {
         let x = args[0].parse::<f32>();
         match x {
             Ok(x) => Box::pin(self.handle_command(x)),
-            _ => panic!("Unreachable, validator should have covered this")
+            _ => panic!("Unreachable, validator should have covered this"),
         }
     }
 }
 
 struct OutXCommandHandler {
-	outside_x: Rc<RefCell<String>>,
+    outside_x: Rc<RefCell<String>>,
 }
 impl OutXCommandHandler {
     pub fn new(outside_x: Rc<RefCell<String>>) -> Self {
         Self { outside_x }
     }
     async fn handle_command(&mut self) -> anyhow::Result<CommandStatus> {
-    	let mut x = self.outside_x.borrow_mut();
+        let mut x = self.outside_x.borrow_mut();
         *x += "x";
         println!("{}", x);
         Ok(CommandStatus::Done)
@@ -110,7 +112,10 @@ impl OutXCommandHandler {
     }
 }
 impl ExecuteCommand for OutXCommandHandler {
-    fn execute(&mut self, args: Vec<String>) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
+    fn execute(
+        &mut self,
+        args: Vec<String>,
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         let valid = Validator::validate(args.clone(), vec![]);
         if let Err(e) = valid {
             return Box::pin(OutXCommandHandler::resolved(Err(e)));

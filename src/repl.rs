@@ -326,7 +326,17 @@ Other commands:
                         let cmds = self.commands.get_mut(name).unwrap();
                         writeln!(&mut self.out, "Usage:")?;
                         for cmd in cmds.iter() {
-                            writeln!(&mut self.out, "  {} {}", name, cmd.args_info.clone().into_iter().map(|info| info.to_string()).collect::<Vec<_>>().join(" "))?;
+                            writeln!(
+                                &mut self.out,
+                                "  {} {}",
+                                name,
+                                cmd.args_info
+                                    .clone()
+                                    .into_iter()
+                                    .map(|info| info.to_string())
+                                    .collect::<Vec<_>>()
+                                    .join(" ")
+                            )?;
                         }
                     }
                     Ok(LoopStatus::Continue)
@@ -402,10 +412,10 @@ Other commands:
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::command::{TrivialCommandHandler, CommandArgInfo, CommandArgType, ExecuteCommand};
-    use std::pin::Pin;
+    use crate::command::{CommandArgInfo, CommandArgType, ExecuteCommand, TrivialCommandHandler};
     use std::future::Future;
-    
+    use std::pin::Pin;
+
     #[test]
     fn builder_duplicate() {
         let command_x_1 = NewCommand {
@@ -458,9 +468,7 @@ mod tests {
             handler: Box::new(TrivialCommandHandler::new()),
         };
 
-        let result = Repl::builder()
-            .add("", command_empty)
-            .build();
+        let result = Repl::builder().add("", command_empty).build();
         assert!(matches!(result, Err(BuilderError::InvalidName(_))));
     }
 
@@ -486,9 +494,7 @@ mod tests {
             handler: Box::new(TrivialCommandHandler::new()),
         };
 
-        let result = Repl::builder()
-            .add("help", command_help)
-            .build();
+        let result = Repl::builder().add("help", command_help).build();
         assert!(matches!(result, Err(BuilderError::ReservedName(_))));
 
         let command_quit = NewCommand {
@@ -497,9 +503,7 @@ mod tests {
             handler: Box::new(TrivialCommandHandler::new()),
         };
 
-        let result = Repl::builder()
-            .add("quit", command_quit)
-            .build();
+        let result = Repl::builder().add("quit", command_quit).build();
         assert!(matches!(result, Err(BuilderError::ReservedName(_))));
     }
 
@@ -511,24 +515,29 @@ mod tests {
             handler: Box::new(TrivialCommandHandler::new()),
         };
 
-        let mut repl = Repl::builder()
-            .add("foo", command_foo)
-            .build()
-            .unwrap();
-        assert_eq!(repl.handle_line("quit".into()).await.unwrap(), LoopStatus::Break);
-
+        let mut repl = Repl::builder().add("foo", command_foo).build().unwrap();
+        assert_eq!(
+            repl.handle_line("quit".into()).await.unwrap(),
+            LoopStatus::Break
+        );
 
         struct QuittingCommandHandler {}
         impl QuittingCommandHandler {
             pub fn new() -> Self {
                 Self {}
             }
-            async fn handle_command(&mut self, _args: Vec<String>) -> anyhow::Result<CommandStatus> {
-               Ok(CommandStatus::Quit)
+            async fn handle_command(
+                &mut self,
+                _args: Vec<String>,
+            ) -> anyhow::Result<CommandStatus> {
+                Ok(CommandStatus::Quit)
             }
         }
         impl ExecuteCommand for QuittingCommandHandler {
-            fn execute(&mut self, args: Vec<String>) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
+            fn execute(
+                &mut self,
+                args: Vec<String>,
+            ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
                 Box::pin(self.handle_command(args))
             }
         }
@@ -538,10 +547,10 @@ mod tests {
             handler: Box::new(QuittingCommandHandler::new()),
         };
 
-        let mut repl = Repl::builder()
-            .add("foo", command_quit)                
-            .build()
-            .unwrap();
-        assert_eq!(repl.handle_line("foo".into()).await.unwrap(), LoopStatus::Break);
+        let mut repl = Repl::builder().add("foo", command_quit).build().unwrap();
+        assert_eq!(
+            repl.handle_line("foo".into()).await.unwrap(),
+            LoopStatus::Break
+        );
     }
 }
