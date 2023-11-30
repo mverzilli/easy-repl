@@ -16,6 +16,15 @@ pub trait ExecuteCommand {
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>>;
 }
 
+pub async fn resolved_command(
+    result: Result<(), ArgsError>,
+) -> Result<CommandStatus, anyhow::Error> {
+    match result {
+        Ok(_) => Ok(CommandStatus::Done),
+        Err(e) => Err(e.into()),
+    }
+}
+
 pub struct TrivialCommandHandler {}
 impl TrivialCommandHandler {
     pub fn new() -> Self {

@@ -1,6 +1,8 @@
 use anyhow::{self, Context};
 use mini_async_repl::{
-    command::{ArgsError, Command, CommandArgInfo, CommandArgType, ExecuteCommand, Validator},
+    command::{
+        resolved_command, Command, CommandArgInfo, CommandArgType, ExecuteCommand, Validator,
+    },
     CommandStatus, Repl,
 };
 use std::future::Future;
@@ -15,12 +17,6 @@ impl SayHelloCommandHandler {
         println!("Hello {}!", name);
         Ok(CommandStatus::Done)
     }
-    async fn resolved(result: Result<(), ArgsError>) -> Result<CommandStatus, anyhow::Error> {
-        match result {
-            Ok(_) => Ok(CommandStatus::Done),
-            Err(e) => Err(e.into()),
-        }
-    }
 }
 impl ExecuteCommand for SayHelloCommandHandler {
     fn execute(
@@ -30,7 +26,7 @@ impl ExecuteCommand for SayHelloCommandHandler {
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         let valid = Validator::validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
-            return Box::pin(SayHelloCommandHandler::resolved(Err(e)));
+            return Box::pin(resolved_command(Err(e)));
         }
         Box::pin(self.handle_command(args[0].clone()))
     }
@@ -45,12 +41,6 @@ impl AddCommandHandler {
         println!("{} + {} = {}", x, y, x + y);
         Ok(CommandStatus::Done)
     }
-    async fn resolved(result: Result<(), ArgsError>) -> Result<CommandStatus, anyhow::Error> {
-        match result {
-            Ok(_) => Ok(CommandStatus::Done),
-            Err(e) => Err(e.into()),
-        }
-    }
 }
 impl ExecuteCommand for AddCommandHandler {
     fn execute(
@@ -61,7 +51,7 @@ impl ExecuteCommand for AddCommandHandler {
         // TODO: validator
         let valid = Validator::validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
-            return Box::pin(AddCommandHandler::resolved(Err(e)));
+            return Box::pin(resolved_command(Err(e)));
         }
 
         let x = args[0].parse::<i32>();
@@ -97,7 +87,7 @@ async fn main() -> anyhow::Result<()> {
     #[rustfmt::skip]
     let mut repl = Repl::builder()
         .add("hello", hello_cmd)
-        .add("add",  add_cmd)
+        .add("add", add_cmd)
         .build()
         .context("Failed to create repl")?;
 

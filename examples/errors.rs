@@ -3,7 +3,8 @@ use std::time::Instant;
 use anyhow::{self, Context};
 use mini_async_repl::{
     command::{
-        ArgsError, Command, CommandArgInfo, CommandArgType, Critical, ExecuteCommand, Validator,
+        resolved_command, Command, CommandArgInfo, CommandArgType, Critical, ExecuteCommand,
+        Validator,
     },
     CommandStatus, Repl,
 };
@@ -18,12 +19,6 @@ impl OkCommandHandler {
     async fn handle_command(&mut self) -> anyhow::Result<CommandStatus> {
         Ok(CommandStatus::Done)
     }
-    async fn resolved(result: Result<(), ArgsError>) -> Result<CommandStatus, anyhow::Error> {
-        match result {
-            Ok(_) => Ok(CommandStatus::Done),
-            Err(e) => Err(e.into()),
-        }
-    }
 }
 impl ExecuteCommand for OkCommandHandler {
     fn execute(
@@ -33,7 +28,7 @@ impl ExecuteCommand for OkCommandHandler {
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         let valid = Validator::validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
-            return Box::pin(OkCommandHandler::resolved(Err(e)));
+            return Box::pin(resolved_command(Err(e)));
         }
         Box::pin(self.handle_command())
     }
@@ -47,12 +42,6 @@ impl RecoverableErrorHandler {
     async fn handle_command(&mut self, text: String) -> anyhow::Result<CommandStatus> {
         Self::may_throw(text)?;
         Ok(CommandStatus::Done)
-    }
-    async fn resolved(result: Result<(), ArgsError>) -> Result<CommandStatus, anyhow::Error> {
-        match result {
-            Ok(_) => Ok(CommandStatus::Done),
-            Err(e) => Err(e.into()),
-        }
     }
     // this could be any function returning Result with an error implementing Error
     // here for simplicity we make use of the Other variant of std::io::Error
@@ -68,7 +57,7 @@ impl ExecuteCommand for RecoverableErrorHandler {
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         let valid = Validator::validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
-            return Box::pin(RecoverableErrorHandler::resolved(Err(e)));
+            return Box::pin(resolved_command(Err(e)));
         }
         Box::pin(self.handle_command(args[0].clone()))
     }
@@ -92,12 +81,6 @@ impl CriticalErrorHandler {
         //   }
         Ok(CommandStatus::Done)
     }
-    async fn resolved(result: Result<(), ArgsError>) -> Result<CommandStatus, anyhow::Error> {
-        match result {
-            Ok(_) => Ok(CommandStatus::Done),
-            Err(e) => Err(e.into()),
-        }
-    }
     // this could be any function returning Result with an error implementing Error
     // here for simplicity we make use of the Other variant of std::io::Error
     fn may_throw(description: String) -> Result<(), std::io::Error> {
@@ -112,7 +95,7 @@ impl ExecuteCommand for CriticalErrorHandler {
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         let valid = Validator::validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
-            return Box::pin(CriticalErrorHandler::resolved(Err(e)));
+            return Box::pin(resolved_command(Err(e)));
         }
         Box::pin(self.handle_command(args[0].clone()))
     }
@@ -135,12 +118,6 @@ impl RouletteErrorHandler {
         }
         Ok(CommandStatus::Done)
     }
-    async fn resolved(result: Result<(), ArgsError>) -> Result<CommandStatus, anyhow::Error> {
-        match result {
-            Ok(_) => Ok(CommandStatus::Done),
-            Err(e) => Err(e.into()),
-        }
-    }
     // this could be any function returning Result with an error implementing Error
     // here for simplicity we make use of the Other variant of std::io::Error
     fn may_throw(description: String) -> Result<(), std::io::Error> {
@@ -155,7 +132,7 @@ impl ExecuteCommand for RouletteErrorHandler {
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         let valid = Validator::validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
-            return Box::pin(RouletteErrorHandler::resolved(Err(e)));
+            return Box::pin(resolved_command(Err(e)));
         }
         Box::pin(self.handle_command())
     }

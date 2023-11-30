@@ -3,7 +3,10 @@ use std::path::PathBuf;
 
 use anyhow::{self, Context};
 use mini_async_repl::{
-    command::{ArgsError, Command, CommandArgInfo, CommandArgType, ExecuteCommand, Validator},
+    command::{
+        resolved_command, ArgsError, Command, CommandArgInfo, CommandArgType, ExecuteCommand,
+        Validator,
+    },
     CommandStatus, Repl,
 };
 use std::future::Future;
@@ -20,12 +23,6 @@ impl LsCommandHandler {
         }
         Ok(CommandStatus::Done)
     }
-    async fn resolved(result: Result<(), ArgsError>) -> Result<CommandStatus, anyhow::Error> {
-        match result {
-            Ok(_) => Ok(CommandStatus::Done),
-            Err(e) => Err(e.into()),
-        }
-    }
 }
 impl ExecuteCommand for LsCommandHandler {
     fn execute(
@@ -35,7 +32,7 @@ impl ExecuteCommand for LsCommandHandler {
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         let valid = Validator::validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
-            return Box::pin(LsCommandHandler::resolved(Err(e)));
+            return Box::pin(resolved_command(Err(e)));
         }
 
         let dir_buf: PathBuf = args[0].clone().into();
@@ -52,12 +49,6 @@ impl IpAddrCommandHandler {
         println!("{}", ip);
         Ok(CommandStatus::Done)
     }
-    async fn resolved(result: Result<(), ArgsError>) -> Result<CommandStatus, anyhow::Error> {
-        match result {
-            Ok(_) => Ok(CommandStatus::Done),
-            Err(e) => Err(e.into()),
-        }
-    }
 }
 impl ExecuteCommand for IpAddrCommandHandler {
     fn execute(
@@ -67,19 +58,17 @@ impl ExecuteCommand for IpAddrCommandHandler {
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         let valid = Validator::validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
-            return Box::pin(IpAddrCommandHandler::resolved(Err(e)));
+            return Box::pin(resolved_command(Err(e)));
         }
 
         let ip = args[0].parse();
 
         match ip {
             Ok(ip) => Box::pin(self.handle_command(ip)),
-            Err(e) => Box::pin(IpAddrCommandHandler::resolved(Err(
-                ArgsError::WrongArgumentValue {
-                    argument: args[0].clone(),
-                    error: e.to_string(),
-                },
-            ))),
+            Err(e) => Box::pin(resolved_command(Err(ArgsError::WrongArgumentValue {
+                argument: args[0].clone(),
+                error: e.to_string(),
+            }))),
         }
     }
 }

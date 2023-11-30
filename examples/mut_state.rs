@@ -1,6 +1,8 @@
 use anyhow::{self, Context};
 use mini_async_repl::{
-    command::{ArgsError, Command, CommandArgInfo, CommandArgType, ExecuteCommand, Validator},
+    command::{
+        resolved_command, Command, CommandArgInfo, CommandArgType, ExecuteCommand, Validator,
+    },
     CommandStatus, Repl,
 };
 use std::cell::RefCell;
@@ -20,12 +22,6 @@ impl CountCommandHandler {
         println!();
         Ok(CommandStatus::Done)
     }
-    async fn resolved(result: Result<(), ArgsError>) -> Result<CommandStatus, anyhow::Error> {
-        match result {
-            Ok(_) => Ok(CommandStatus::Done),
-            Err(e) => Err(e.into()),
-        }
-    }
 }
 impl ExecuteCommand for CountCommandHandler {
     fn execute(
@@ -36,7 +32,7 @@ impl ExecuteCommand for CountCommandHandler {
         // TODO: validator
         let valid = Validator::validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
-            return Box::pin(CountCommandHandler::resolved(Err(e)));
+            return Box::pin(resolved_command(Err(e)));
         }
 
         let x = args[0].parse::<i32>();
@@ -58,12 +54,6 @@ impl SayCommandHandler {
         println!("x is equal to {}", x);
         Ok(CommandStatus::Done)
     }
-    async fn resolved(result: Result<(), ArgsError>) -> Result<CommandStatus, anyhow::Error> {
-        match result {
-            Ok(_) => Ok(CommandStatus::Done),
-            Err(e) => Err(e.into()),
-        }
-    }
 }
 impl ExecuteCommand for SayCommandHandler {
     fn execute(
@@ -73,7 +63,7 @@ impl ExecuteCommand for SayCommandHandler {
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         let valid = Validator::validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
-            return Box::pin(SayCommandHandler::resolved(Err(e)));
+            return Box::pin(resolved_command(Err(e)));
         }
 
         let x = args[0].parse::<f32>();
@@ -97,12 +87,6 @@ impl OutXCommandHandler {
         println!("{}", x);
         Ok(CommandStatus::Done)
     }
-    async fn resolved(result: Result<(), ArgsError>) -> Result<CommandStatus, anyhow::Error> {
-        match result {
-            Ok(_) => Ok(CommandStatus::Done),
-            Err(e) => Err(e.into()),
-        }
-    }
 }
 impl ExecuteCommand for OutXCommandHandler {
     fn execute(
@@ -112,7 +96,7 @@ impl ExecuteCommand for OutXCommandHandler {
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         let valid = Validator::validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
-            return Box::pin(OutXCommandHandler::resolved(Err(e)));
+            return Box::pin(resolved_command(Err(e)));
         }
         Box::pin(self.handle_command())
     }

@@ -1,6 +1,9 @@
 use anyhow::{self, Context};
 use mini_async_repl::{
-    command::{ArgsError, Command, CommandArgInfo, CommandArgType, ExecuteCommand, Validator},
+    command::{
+        resolved_command, ArgsError, Command, CommandArgInfo, CommandArgType, ExecuteCommand,
+        Validator,
+    },
     CommandStatus, Repl,
 };
 use std::future::Future;
@@ -23,12 +26,6 @@ impl DescribeCommandHandler {
         println!("An integer `{}` and a string `{}`", a, b);
         Ok(CommandStatus::Done)
     }
-    async fn resolved(result: Result<(), ArgsError>) -> Result<CommandStatus, anyhow::Error> {
-        match result {
-            Ok(_) => Ok(CommandStatus::Done),
-            Err(e) => Err(e.into()),
-        }
-    }
 }
 impl ExecuteCommand for DescribeCommandHandler {
     fn execute(
@@ -38,7 +35,7 @@ impl ExecuteCommand for DescribeCommandHandler {
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         let valid = Validator::validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
-            return Box::pin(DescribeCommandHandler::resolved(Err(e)));
+            return Box::pin(resolved_command(Err(e)));
         }
 
         // Note: this example could also be implemented by
@@ -88,9 +85,7 @@ impl ExecuteCommand for DescribeCommandHandler {
             }
         }
 
-        Box::pin(DescribeCommandHandler::resolved(Err(
-            ArgsError::NoVariantFound,
-        )))
+        Box::pin(resolved_command(Err(ArgsError::NoVariantFound)))
     }
 }
 
