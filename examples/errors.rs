@@ -29,14 +29,9 @@ impl ExecuteCommand for OkCommandHandler {
     fn execute(
         &mut self,
         args: Vec<String>,
+        args_info: Vec<CommandArgInfo>,
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
-        let valid = Validator::validate(
-            args.clone(),
-            vec![CommandArgInfo::new_with_name(
-                CommandArgType::String,
-                "name",
-            )],
-        );
+        let valid = Validator::validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
             return Box::pin(OkCommandHandler::resolved(Err(e)));
         }
@@ -69,14 +64,9 @@ impl ExecuteCommand for RecoverableErrorHandler {
     fn execute(
         &mut self,
         args: Vec<String>,
+        args_info: Vec<CommandArgInfo>,
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
-        let valid = Validator::validate(
-            args.clone(),
-            vec![CommandArgInfo::new_with_name(
-                CommandArgType::String,
-                "text",
-            )],
-        );
+        let valid = Validator::validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
             return Box::pin(RecoverableErrorHandler::resolved(Err(e)));
         }
@@ -118,14 +108,9 @@ impl ExecuteCommand for CriticalErrorHandler {
     fn execute(
         &mut self,
         args: Vec<String>,
+        args_info: Vec<CommandArgInfo>,
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
-        let valid = Validator::validate(
-            args.clone(),
-            vec![CommandArgInfo::new_with_name(
-                CommandArgType::String,
-                "text",
-            )],
-        );
+        let valid = Validator::validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
             return Box::pin(CriticalErrorHandler::resolved(Err(e)));
         }
@@ -166,8 +151,9 @@ impl ExecuteCommand for RouletteErrorHandler {
     fn execute(
         &mut self,
         args: Vec<String>,
+        args_info: Vec<CommandArgInfo>,
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
-        let valid = Validator::validate(args.clone(), vec![]);
+        let valid = Validator::validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
             return Box::pin(RouletteErrorHandler::resolved(Err(e)));
         }

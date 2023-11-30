@@ -12,6 +12,7 @@ pub trait ExecuteCommand {
     fn execute(
         &mut self,
         args: Vec<String>,
+        args_info: Vec<CommandArgInfo>,
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>>;
 }
 
@@ -30,6 +31,7 @@ impl ExecuteCommand for TrivialCommandHandler {
     fn execute(
         &mut self,
         args: Vec<String>,
+        _args_info: Vec<CommandArgInfo>,
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         Box::pin(self.handle_command(args))
     }
@@ -105,8 +107,10 @@ impl Command {
         &mut self,
         args: &[&str],
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
-        self.handler
-            .execute(args.iter().map(|s| s.to_string()).collect())
+        self.handler.execute(
+            args.iter().map(|s| s.to_string()).collect(),
+            self.args_info.clone(),
+        )
     }
 
     /// Returns the string description of the argument types
@@ -342,6 +346,7 @@ mod tests {
             fn execute(
                 &mut self,
                 args: Vec<String>,
+                _args_info: Vec<CommandArgInfo>,
             ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
                 Box::pin(self.handle_command(args))
             }

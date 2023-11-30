@@ -34,8 +34,18 @@ impl ExecuteCommand for DescribeCommandHandler {
     fn execute(
         &mut self,
         args: Vec<String>,
+        args_info: Vec<CommandArgInfo>,
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
-        let variant_1 = Validator::validate(args.clone(), vec![]);
+        let valid = Validator::validate(args.clone(), args_info.clone());
+        if let Err(e) = valid {
+            return Box::pin(DescribeCommandHandler::resolved(Err(e)));
+        }
+
+        // Note: this example could also be implemented by
+        // providing one CommandHandler for each overload.
+        // For now I think it's better not to constraint approaches
+        // because it's not yet clear to me what the best design is.
+        let variant_1 = Validator::validate(args.clone(), args_info);
         if let Ok(()) = variant_1 {
             return Box::pin(self.handle_variant_1());
         }

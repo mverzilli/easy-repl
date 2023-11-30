@@ -31,11 +31,9 @@ impl ExecuteCommand for LsCommandHandler {
     fn execute(
         &mut self,
         args: Vec<String>,
+        args_info: Vec<CommandArgInfo>,
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
-        let valid = Validator::validate(
-            args.clone(),
-            vec![CommandArgInfo::new_with_name(CommandArgType::Custom, "dir")],
-        );
+        let valid = Validator::validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
             return Box::pin(LsCommandHandler::resolved(Err(e)));
         }
@@ -65,11 +63,9 @@ impl ExecuteCommand for IpAddrCommandHandler {
     fn execute(
         &mut self,
         args: Vec<String>,
+        args_info: Vec<CommandArgInfo>,
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
-        let valid = Validator::validate(
-            args.clone(),
-            vec![CommandArgInfo::new_with_name(CommandArgType::Custom, "ip")],
-        );
+        let valid = Validator::validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
             return Box::pin(IpAddrCommandHandler::resolved(Err(e)));
         }

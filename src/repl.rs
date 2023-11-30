@@ -537,6 +537,7 @@ mod tests {
             fn execute(
                 &mut self,
                 args: Vec<String>,
+                _args_info: Vec<CommandArgInfo>,
             ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
                 Box::pin(self.handle_command(args))
             }

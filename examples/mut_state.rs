@@ -31,15 +31,10 @@ impl ExecuteCommand for CountCommandHandler {
     fn execute(
         &mut self,
         args: Vec<String>,
+        args_info: Vec<CommandArgInfo>,
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         // TODO: validator
-        let valid = Validator::validate(
-            args.clone(),
-            vec![
-                CommandArgInfo::new_with_name(CommandArgType::I32, "X"),
-                CommandArgInfo::new_with_name(CommandArgType::I32, "Y"),
-            ],
-        );
+        let valid = Validator::validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
             return Box::pin(CountCommandHandler::resolved(Err(e)));
         }
@@ -74,11 +69,9 @@ impl ExecuteCommand for SayCommandHandler {
     fn execute(
         &mut self,
         args: Vec<String>,
+        args_info: Vec<CommandArgInfo>,
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
-        let valid = Validator::validate(
-            args.clone(),
-            vec![CommandArgInfo::new_with_name(CommandArgType::F32, "X")],
-        );
+        let valid = Validator::validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
             return Box::pin(SayCommandHandler::resolved(Err(e)));
         }
@@ -115,8 +108,9 @@ impl ExecuteCommand for OutXCommandHandler {
     fn execute(
         &mut self,
         args: Vec<String>,
+        args_info: Vec<CommandArgInfo>,
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
-        let valid = Validator::validate(args.clone(), vec![]);
+        let valid = Validator::validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
             return Box::pin(OutXCommandHandler::resolved(Err(e)));
         }

@@ -26,14 +26,9 @@ impl ExecuteCommand for SayHelloCommandHandler {
     fn execute(
         &mut self,
         args: Vec<String>,
+        args_info: Vec<CommandArgInfo>,
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
-        let valid = Validator::validate(
-            args.clone(),
-            vec![CommandArgInfo::new_with_name(
-                CommandArgType::String,
-                "name",
-            )],
-        );
+        let valid = Validator::validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
             return Box::pin(SayHelloCommandHandler::resolved(Err(e)));
         }
@@ -61,15 +56,10 @@ impl ExecuteCommand for AddCommandHandler {
     fn execute(
         &mut self,
         args: Vec<String>,
+        args_info: Vec<CommandArgInfo>,
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         // TODO: validator
-        let valid = Validator::validate(
-            args.clone(),
-            vec![
-                CommandArgInfo::new_with_name(CommandArgType::I32, "X"),
-                CommandArgInfo::new_with_name(CommandArgType::I32, "Y"),
-            ],
-        );
+        let valid = Validator::validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
             return Box::pin(AddCommandHandler::resolved(Err(e)));
         }
