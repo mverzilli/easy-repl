@@ -71,14 +71,6 @@ impl CriticalErrorHandler {
     async fn handle_command(&mut self, text: String) -> anyhow::Result<CommandStatus> {
         // Short notation using the Critical trait
         Self::may_throw(text).into_critical()?;
-        // More explicitly it could be:
-        //   if let Err(err) = may_throw(text) {
-        //       Err(easy_repl::CriticalError::Critical(err.into()))?;
-        //   }
-        // or even:
-        //   if let Err(err) = may_throw(text) {
-        //       return Err(easy_repl::CriticalError::Critical(err.into())).into();
-        //   }
         Ok(CommandStatus::Done)
     }
     // this could be any function returning Result with an error implementing Error

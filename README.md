@@ -1,12 +1,14 @@
-# easy-repl [![crates.io](https://img.shields.io/crates/v/easy-repl.svg)](https://crates.io/crates/easy-repl) [![docs.rs](https://docs.rs/easy-repl/badge.svg)](https://docs.rs/easy-repl)
+# mini-async-repl [![crates.io](https://img.shields.io/crates/v/mini-async-repl.svg)](https://crates.io/crates/mini-async-repl) [![docs.rs](https://docs.rs/mini-async-repl/badge.svg)](https://docs.rs/mini-sync-repl)
 
-An easy to use REPL, ideal when there is a need to crate an ad-hoc shell.
+A minimally functional, async-oriented REPL. 
 
-This is a Rust library that provides a fast and convenient way to generate a
-[REPL](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop)
-for your application. It comes with easy to use `command!` macro that
-will automatically validate and parse command arguments, doing all the type
-checking for you. The REPL comes with handy help messages, input validation,
-hints and TAB-completion. Many REPL features can be configured.
+This Rust library is meant to help you build a REPL for your application. This work is a derivative from the great [easy-repl](https://github.com/jedrzejboczar/easy-repl) crate originally authored by [Jędrzej Boczar](https://github.com/jedrzejboczar).
 
-See the crate documentation and the `examples/` directory for more information.
+We were actually very happy as users of easy-repl, until we stumbled upon the need to await for async commands. So we decided to fork it and re-design the way commands are handled and re-implement the REPL's loop itself so that it awaitable.
+
+Given the complexities of dealing with Rust's type system, borrow checker, and async programming, we decided to drop the macro oriented approach in easy-repl in favor of a somewhat more complex model. 
+
+All the rest of the high level features available in easy-repl are equally available to mini-async-repl, eg handy help messages, hints and TAB-completion.
+
+While easy-repl automatically handles validation and parsing of params leveraging its macros, we decided to leave those features out for the first version of this crate. Some utilities for validation and parsing are exposed for the library's user to compose their own handlers instead. See the `examples/` directory for more information to learn how to implement different scenarios.
+
