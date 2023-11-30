@@ -1,7 +1,7 @@
 use anyhow::{self, Context};
 use mini_async_repl::{
     command::{
-        resolved_command, validate, Command, CommandArgInfo, CommandArgType, ExecuteCommand,
+        lift_validation_err, validate, Command, CommandArgInfo, CommandArgType, ExecuteCommand,
     },
     CommandStatus, Repl,
 };
@@ -31,7 +31,7 @@ impl ExecuteCommand for CountCommandHandler {
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         let valid = validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
-            return Box::pin(resolved_command(Err(e)));
+            return Box::pin(lift_validation_err(Err(e)));
         }
 
         let x = args[0].parse::<i32>();
@@ -62,7 +62,7 @@ impl ExecuteCommand for SayCommandHandler {
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         let valid = validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
-            return Box::pin(resolved_command(Err(e)));
+            return Box::pin(lift_validation_err(Err(e)));
         }
 
         let x = args[0].parse::<f32>();
@@ -95,7 +95,7 @@ impl ExecuteCommand for OutXCommandHandler {
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         let valid = validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
-            return Box::pin(resolved_command(Err(e)));
+            return Box::pin(lift_validation_err(Err(e)));
         }
         Box::pin(self.handle_command())
     }

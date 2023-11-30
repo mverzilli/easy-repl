@@ -1,7 +1,7 @@
 use anyhow::{self, Context};
 use mini_async_repl::{
     command::{
-        resolved_command, validate, Command, CommandArgInfo, CommandArgType, ExecuteCommand,
+        lift_validation_err, validate, Command, CommandArgInfo, CommandArgType, ExecuteCommand,
     },
     CommandStatus, Repl,
 };
@@ -25,8 +25,8 @@ impl ExecuteCommand for SayHelloCommandHandler {
         args_info: Vec<CommandArgInfo>,
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         let valid = validate(args.clone(), args_info.clone());
-        if let Err(e) = valid {
-            return Box::pin(resolved_command(Err(e)));
+        if valid.is_err() {
+            return Box::pin(lift_validation_err(valid));
         }
         Box::pin(self.handle_command(args[0].clone()))
     }
@@ -49,8 +49,8 @@ impl ExecuteCommand for AddCommandHandler {
         args_info: Vec<CommandArgInfo>,
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         let valid = validate(args.clone(), args_info.clone());
-        if let Err(e) = valid {
-            return Box::pin(resolved_command(Err(e)));
+        if valid.is_err() {
+            return Box::pin(lift_validation_err(valid));
         }
 
         let x = args[0].parse::<i32>();

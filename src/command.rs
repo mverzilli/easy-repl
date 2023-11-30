@@ -16,13 +16,12 @@ pub trait ExecuteCommand {
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>>;
 }
 
-pub async fn resolved_command(
-    result: Result<(), ArgsError>,
+pub async fn lift_validation_err(
+    validation_err: Result<(), ArgsError>,
 ) -> Result<CommandStatus, anyhow::Error> {
-    match result {
-        Ok(_) => Ok(CommandStatus::Done),
-        Err(e) => Err(e.into()),
-    }
+    validation_err
+        .map_err(|e| Err(e.into()))
+        .expect_err("Not a validation error, this is a bug.")
 }
 
 pub struct TrivialCommandHandler {}
@@ -173,17 +172,6 @@ pub fn validate(
 
     Ok(())
 }
-
-/// Command handler.
-///
-/// It should return the status in case of correct execution. In case of
-/// errors, all the errors will be handled by the REPL, except for
-/// [`CriticalError`], which will be passed up from the REPL.
-///
-/// The handler should validate command arguments and can return [`ArgsError`]
-/// to indicate that arguments were wrong.
-pub type Handler<'a> =
-    dyn 'a + FnMut(&[&str]) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + 'a>>;
 
 /// Return status of a command.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

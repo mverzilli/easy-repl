@@ -1,7 +1,7 @@
 use anyhow::{self, Context};
 use mini_async_repl::{
     command::{
-        resolved_command, validate, ArgsError, Command, CommandArgInfo, CommandArgType,
+        lift_validation_err, validate, ArgsError, Command, CommandArgInfo, CommandArgType,
         ExecuteCommand,
     },
     CommandStatus, Repl,
@@ -35,7 +35,7 @@ impl ExecuteCommand for DescribeCommandHandler {
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         let valid = validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
-            return Box::pin(resolved_command(Err(e)));
+            return Box::pin(lift_validation_err(Err(e)));
         }
 
         // Note: this example could also be implemented by
@@ -85,7 +85,7 @@ impl ExecuteCommand for DescribeCommandHandler {
             }
         }
 
-        Box::pin(resolved_command(Err(ArgsError::NoVariantFound)))
+        Box::pin(lift_validation_err(Err(ArgsError::NoVariantFound)))
     }
 }
 

@@ -3,7 +3,7 @@ use std::time::Instant;
 use anyhow::{self, Context};
 use mini_async_repl::{
     command::{
-        resolved_command, validate, Command, CommandArgInfo, CommandArgType, Critical,
+        lift_validation_err, validate, Command, CommandArgInfo, CommandArgType, Critical,
         ExecuteCommand,
     },
     CommandStatus, Repl,
@@ -28,7 +28,7 @@ impl ExecuteCommand for OkCommandHandler {
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         let valid = validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
-            return Box::pin(resolved_command(Err(e)));
+            return Box::pin(lift_validation_err(Err(e)));
         }
         Box::pin(self.handle_command())
     }
@@ -57,7 +57,7 @@ impl ExecuteCommand for RecoverableErrorHandler {
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         let valid = validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
-            return Box::pin(resolved_command(Err(e)));
+            return Box::pin(lift_validation_err(Err(e)));
         }
         Box::pin(self.handle_command(args[0].clone()))
     }
@@ -95,7 +95,7 @@ impl ExecuteCommand for CriticalErrorHandler {
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         let valid = validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
-            return Box::pin(resolved_command(Err(e)));
+            return Box::pin(lift_validation_err(Err(e)));
         }
         Box::pin(self.handle_command(args[0].clone()))
     }
@@ -132,7 +132,7 @@ impl ExecuteCommand for RouletteErrorHandler {
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         let valid = validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
-            return Box::pin(resolved_command(Err(e)));
+            return Box::pin(lift_validation_err(Err(e)));
         }
         Box::pin(self.handle_command())
     }

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use anyhow::{self, Context};
 use mini_async_repl::{
     command::{
-        resolved_command, validate, ArgsError, Command, CommandArgInfo, CommandArgType,
+        lift_validation_err, validate, ArgsError, Command, CommandArgInfo, CommandArgType,
         ExecuteCommand,
     },
     CommandStatus, Repl,
@@ -32,7 +32,7 @@ impl ExecuteCommand for LsCommandHandler {
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         let valid = validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
-            return Box::pin(resolved_command(Err(e)));
+            return Box::pin(lift_validation_err(Err(e)));
         }
 
         let dir_buf: PathBuf = args[0].clone().into();
@@ -58,14 +58,14 @@ impl ExecuteCommand for IpAddrCommandHandler {
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<CommandStatus>> + '_>> {
         let valid = validate(args.clone(), args_info.clone());
         if let Err(e) = valid {
-            return Box::pin(resolved_command(Err(e)));
+            return Box::pin(lift_validation_err(Err(e)));
         }
 
         let ip = args[0].parse();
 
         match ip {
             Ok(ip) => Box::pin(self.handle_command(ip)),
-            Err(e) => Box::pin(resolved_command(Err(ArgsError::WrongArgumentValue {
+            Err(e) => Box::pin(lift_validation_err(Err(ArgsError::WrongArgumentValue {
                 argument: args[0].clone(),
                 error: e.to_string(),
             }))),
